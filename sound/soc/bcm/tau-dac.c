@@ -33,10 +33,17 @@ static int snd_rpi_tau_dac_remove(struct platform_device *pdev)
 	return ret;
 }
 
+static const struct of_device_id snd_rpi_tau_dac_of_match[] = {
+	{ .compatible = "singularity-audio,tau-dac", },
+	{},
+};
+MODULE_DEVICE_TABLE(of, snd_rpi_tau_dac_of_match);
+
 static struct platform_driver snd_rpi_tau_dac_driver = {
 	.driver = {
 		.name   = "snd-tau-dac",
 		.owner  = THIS_MODULE,
+		.of_match_table = snd_rpi_tau_dac_of_match,
 	},
 	.probe  = snd_rpi_tau_dac_probe,
 	.remove = snd_rpi_tau_dac_remove,
