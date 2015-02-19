@@ -20,4 +20,27 @@
 			status = "okay";
 		};
 	};
+	
+	fragment@2 {
+		target = <&i2c1>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+
+			wm8741@1a {
+				#sound-dai-cells = <0>;
+				compatible = "wm,wm8741";
+				reg = <0x1a>;
+				status = "okay";
+			};
+			
+			wm8741@1b {
+				#sound-dai-cells = <0>;
+				compatible = "wm,wm8741";
+				reg = <0x1b>;
+				status = "okay";
+			};
+		};
+	};
 };
