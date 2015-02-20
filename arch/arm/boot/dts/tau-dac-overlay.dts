@@ -32,6 +32,7 @@
 		target = <&sound>;
 		__overlay__ {
 			compatible = "singularity-audio,tau-dac";
+			tau-dac,card-name = "TauDAC V1.0";
 			i2s-controller = <&i2s>;
 			codecs = <&wm8741_left>, <&wm8741_right>;
 			status = "okay";

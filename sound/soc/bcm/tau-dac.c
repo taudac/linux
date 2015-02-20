@@ -20,9 +20,20 @@
 #include <sound/core.h>
 #include <sound/soc.h>
 
+#include <linux/gpio.h>
 #include <linux/i2c.h>
 
 #include "../codecs/wm8741.h"
+
+
+#define TAU_DAC_GPIO_MCLK_ENABLE 27
+#define TAU_DAC_GPIO_MCLK_SELECT 22
+
+
+static struct gpio snd_rpi_tau_dac_gpios[] = {
+	{TAU_DAC_GPIO_MCLK_ENABLE, GPIOF_OUT_INIT_LOW, "TauDAC MCLK Enable Pin"},
+	{TAU_DAC_GPIO_MCLK_SELECT, GPIOF_OUT_INIT_LOW, "TauDAC MCLK Select Pin"},
+};
 
 /*
  * asoc codecs
@@ -113,46 +124,92 @@ static struct snd_soc_card snd_rpi_tau_dac = {
 /*
  * platform device driver
  */
+static int snd_rpi_tau_dac_parse_dt(struct device_node *np)
+{
+	int i;
+
+    struct device_node *i2s_node;
+    struct device_node *i2c_nodes[ARRAY_SIZE(snd_rpi_tau_dac_codecs)];
+    struct snd_soc_dai_link *dai = &snd_rpi_tau_dac_dai[0];
+
+    i2s_node = of_parse_phandle(np, "i2s-controller", 0);
+
+    if (i2s_node == NULL)
+    	return -EINVAL;
+
+	dai->cpu_dai_name = NULL;
+	dai->cpu_of_node = i2s_node;
+	dai->platform_name = NULL;
+	dai->platform_of_node = i2s_node;
+
+    for (i = 0; i < ARRAY_SIZE(i2c_nodes); i++) {
+    	i2c_nodes[i] = of_parse_phandle(np, "codecs", i);
+
+    	if (i2c_nodes[i] == NULL)
+    		return -EINVAL;
+
+		dai->codecs[i].name = NULL;
+		dai->codecs[i].of_node = i2c_nodes[i];
+    }
+
+    // TODO: get gpio info
+
+//	if (snd_soc_of_parse_card_name(card, "atmel,model") != 0)
+//		dev_err(&pdev->dev, "snd_soc_of_parse_card_name() failed\n");
+
+    return 0;
+}
+
 static int snd_rpi_tau_dac_probe(struct platform_device *pdev)
 {
-	int ret, i;
+	int ret;
+	struct device_node *np = pdev->dev.of_node;
 
 	snd_rpi_tau_dac.dev = &pdev->dev;
 
-	if (pdev->dev.of_node) {
-	    struct device_node *i2s_node;
-	    struct device_node *i2c_nodes[ARRAY_SIZE(snd_rpi_tau_dac_codecs)];
-	    struct snd_soc_dai_link *dai = &snd_rpi_tau_dac_dai[0];
+	/* parse device tree node info */
+	if (np != NULL) {
+		ret = snd_rpi_tau_dac_parse_dt(np);
 
-	    i2s_node = of_parse_phandle(pdev->dev.of_node, "i2s-controller", 0);
-
-	    if (i2s_node != NULL) {
-			dai->cpu_dai_name = NULL;
-			dai->cpu_of_node = i2s_node;
-			dai->platform_name = NULL;
-			dai->platform_of_node = i2s_node;
-	    }
-
-	    for (i = 0; i < ARRAY_SIZE(i2c_nodes); i++) {
-	    	i2c_nodes[i] = of_parse_phandle(pdev->dev.of_node, "codecs", i);
-
-	    	if (i2c_nodes[i] != NULL) {
-		    	dai->codecs[i].name = NULL;
-		    	dai->codecs[i].of_node = i2c_nodes[i];
-		    }
-	    }
+		if (ret != 0) {
+			dev_err(&pdev->dev, "parsing device tree info failed: %d\n", ret);
+			goto err_dt;
+		}
+	} else {
+		dev_err(&pdev->dev, "skipping device tree configuration\n");
 	}
 
+	/* request gpio pins */
+	ret = gpio_request_array(snd_rpi_tau_dac_gpios,
+		ARRAY_SIZE(snd_rpi_tau_dac_gpios));
+
+	if (ret != 0) {
+		dev_err(&pdev->dev, "gpio_request_array() failed: %d\n", ret);
+		goto err_gpio;
+	}
+
+	/* register card */
 	ret = snd_soc_register_card(&snd_rpi_tau_dac);
 
-	if (ret != 0)
+	if (ret != 0) {
 		dev_err(&pdev->dev, "snd_soc_register_card() failed: %d\n", ret);
+		goto err_gpio;
+	}
 
+	return ret;
+
+err_gpio:
+	gpio_free_array(snd_rpi_tau_dac_gpios, ARRAY_SIZE(snd_rpi_tau_dac_gpios));
+err_dt:
 	return ret;
 }
 
 static int snd_rpi_tau_dac_remove(struct platform_device *pdev)
 {
+	gpio_set_value(TAU_DAC_GPIO_MCLK_ENABLE, 0);
+	gpio_set_value(TAU_DAC_GPIO_MCLK_SELECT, 0);
+	gpio_free_array(snd_rpi_tau_dac_gpios, ARRAY_SIZE(snd_rpi_tau_dac_gpios));
+
 	return snd_soc_unregister_card(&snd_rpi_tau_dac);
 }
 
