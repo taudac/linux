@@ -16,10 +16,11 @@
 
 #include <linux/module.h>
 #include <linux/platform_device.h>
-#include <linux/i2c.h>
 
 #include <sound/core.h>
 #include <sound/soc.h>
+
+#include <linux/i2c.h>
 
 #include "../codecs/wm8741.h"
 
@@ -114,13 +115,15 @@ static struct snd_soc_card snd_rpi_tau_dac = {
  */
 static int snd_rpi_tau_dac_probe(struct platform_device *pdev)
 {
-	int ret = 0;
+	int ret, i;
 
 	snd_rpi_tau_dac.dev = &pdev->dev;
 
 	if (pdev->dev.of_node) {
 	    struct device_node *i2s_node;
+	    struct device_node *i2c_nodes[ARRAY_SIZE(snd_rpi_tau_dac_codecs)];
 	    struct snd_soc_dai_link *dai = &snd_rpi_tau_dac_dai[0];
+
 	    i2s_node = of_parse_phandle(pdev->dev.of_node, "i2s-controller", 0);
 
 	    if (i2s_node != NULL) {
@@ -129,9 +132,19 @@ static int snd_rpi_tau_dac_probe(struct platform_device *pdev)
 			dai->platform_name = NULL;
 			dai->platform_of_node = i2s_node;
 	    }
+
+	    for (i = 0; i < ARRAY_SIZE(i2c_nodes); i++) {
+	    	i2c_nodes[i] = of_parse_phandle(pdev->dev.of_node, "codecs", i);
+
+	    	if (i2c_nodes[i] != NULL) {
+		    	dai->codecs[i].name = NULL;
+		    	dai->codecs[i].of_node = i2c_nodes[i];
+		    }
+	    }
 	}
 
 	ret = snd_soc_register_card(&snd_rpi_tau_dac);
+
 	if (ret != 0)
 		dev_err(&pdev->dev, "snd_soc_register_card() failed: %d\n", ret);
 
@@ -151,8 +164,8 @@ MODULE_DEVICE_TABLE(of, snd_rpi_tau_dac_of_match);
 
 static struct platform_driver snd_rpi_tau_dac_driver = {
 	.driver = {
-		.name   = "snd-tau-dac",
-		.owner  = THIS_MODULE,
+		.name  = "snd-tau-dac",
+		.owner = THIS_MODULE,
 		.of_match_table = snd_rpi_tau_dac_of_match,
 	},
 	.probe  = snd_rpi_tau_dac_probe,
