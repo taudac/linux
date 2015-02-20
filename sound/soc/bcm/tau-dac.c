@@ -16,21 +16,131 @@
 
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/i2c.h>
+
+#include <sound/core.h>
+#include <sound/soc.h>
 
 #include "../codecs/wm8741.h"
 
+/*
+ * asoc codecs
+ */
+static struct i2c_board_info wm8741_i2c_devices[] = {
+	{
+		I2C_BOARD_INFO("wm8741", 0x1a),
+//		 .platform_data = &wm8741_pdata_left,
+	},
+	{
+		I2C_BOARD_INFO("wm8741", 0x1b),
+//		.platform_data = &wm8741_pdata_right,
+	},
+};
+
+struct i2c_client *wm8741_i2c_clients[ARRAY_SIZE(wm8741_i2c_devices)];
+
+static struct snd_soc_dai_link_component snd_rpi_tau_dac_codecs[] = {
+	{
+		.name     = "wm8741.1-001a",
+		.dai_name = "wm8741",
+	},
+	{
+		.name     = "wm8741.1-001b",
+		.dai_name = "wm8741",
+	},
+};
+
+/*
+ * asoc digital audio interface
+ */
+static int snd_rpi_tau_dac_init(struct snd_soc_pcm_runtime *rtd)
+{
+	int ret = 0;
+	return ret;
+}
+
+static int snd_rpi_tau_dac_startup(struct snd_pcm_substream *substream)
+{
+	int ret = 0;
+	return ret;
+}
+
+static int snd_rpi_tau_dac_hw_params(struct snd_pcm_substream *substream,
+	                                 struct snd_pcm_hw_params *params)
+{
+	int ret = 0;
+	return ret;
+}
+
+static void snd_rpi_tau_dac_shutdown(struct snd_pcm_substream *substream)
+{
+
+}
+
+static struct snd_soc_ops snd_rpi_tau_dac_ops = {
+	.startup   = snd_rpi_tau_dac_startup,
+	.shutdown  = snd_rpi_tau_dac_shutdown,
+	.hw_params = snd_rpi_tau_dac_hw_params,
+};
+
+static struct snd_soc_dai_link snd_rpi_tau_dac_dai[] = {
+	{
+		.name          = "TauDAC",
+		.stream_name   = "TauDAC HiFi",
+		.cpu_dai_name  = "bcm2708-i2s.0",
+		.platform_name = "bcm2708-i2s.0",
+		.codecs        = snd_rpi_tau_dac_codecs,
+		.num_codecs    = ARRAY_SIZE(snd_rpi_tau_dac_codecs),
+		.dai_fmt       = SND_SOC_DAIFMT_I2S |
+		                 SND_SOC_DAIFMT_NB_NF |
+		                 SND_SOC_DAIFMT_CBS_CFS,
+		.playback_only = true,
+		.ops  = &snd_rpi_tau_dac_ops,
+		.init = snd_rpi_tau_dac_init,
+	},
+};
+
+/*
+ * asoc machine driver
+ */
+static struct snd_soc_card snd_rpi_tau_dac = {
+	.name       = "snd_rpi_tau_dac",
+	.dai_link   = snd_rpi_tau_dac_dai,
+	.num_links  = ARRAY_SIZE(snd_rpi_tau_dac_dai),
+};
+
+/*
+ * platform device driver
+ */
 static int snd_rpi_tau_dac_probe(struct platform_device *pdev)
 {
 	int ret = 0;
+
+	snd_rpi_tau_dac.dev = &pdev->dev;
+
+	if (pdev->dev.of_node) {
+	    struct device_node *i2s_node;
+	    struct snd_soc_dai_link *dai = &snd_rpi_tau_dac_dai[0];
+	    i2s_node = of_parse_phandle(pdev->dev.of_node, "i2s-controller", 0);
+
+	    if (i2s_node != NULL) {
+			dai->cpu_dai_name = NULL;
+			dai->cpu_of_node = i2s_node;
+			dai->platform_name = NULL;
+			dai->platform_of_node = i2s_node;
+	    }
+	}
+
+	ret = snd_soc_register_card(&snd_rpi_tau_dac);
+	if (ret != 0)
+		dev_err(&pdev->dev, "snd_soc_register_card() failed: %d\n", ret);
 
 	return ret;
 }
 
 static int snd_rpi_tau_dac_remove(struct platform_device *pdev)
 {
-	int ret = 0;
-
-	return ret;
+	return snd_soc_unregister_card(&snd_rpi_tau_dac);
 }
 
 static const struct of_device_id snd_rpi_tau_dac_of_match[] = {
