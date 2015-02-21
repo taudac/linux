@@ -6,7 +6,7 @@
 	compatible = "brcm,bcm2708";
 	
 	fragment@0 {
-		target = <&clocks>;
+		target-path = "/clocks";
 		__overlay__ {
 		
 			osc22: osc@22.5792M {
