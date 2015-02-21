@@ -22,6 +22,7 @@
 
 #include <linux/gpio.h>
 #include <linux/i2c.h>
+#include <linux/clk.h>
 
 #include "../codecs/wm8741.h"
 
@@ -34,6 +35,12 @@ static struct gpio snd_rpi_tau_dac_gpios[] = {
 	{TAU_DAC_GPIO_MCLK_ENABLE, GPIOF_OUT_INIT_LOW, "TauDAC MCLK Enable Pin"},
 	{TAU_DAC_GPIO_MCLK_SELECT, GPIOF_OUT_INIT_LOW, "TauDAC MCLK Select Pin"},
 };
+
+
+/*
+ * clock producer
+ */
+static struct clk *mclk;
 
 /*
  * asoc codecs
@@ -187,6 +194,12 @@ static int snd_rpi_tau_dac_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "gpio_request_array() failed: %d\n", ret);
 		goto err_gpio;
 	}
+	
+	/* clock */
+	mclk = clk_get(&pdev->dev, NULL);
+	if (IS_ERR(mclk)) {
+		goto err_clk;
+	}
 
 	/* register card */
 	ret = snd_soc_register_card(&snd_rpi_tau_dac);
@@ -197,7 +210,8 @@ static int snd_rpi_tau_dac_probe(struct platform_device *pdev)
 	}
 
 	return ret;
-
+	
+err_clk:
 err_gpio:
 	gpio_free_array(snd_rpi_tau_dac_gpios, ARRAY_SIZE(snd_rpi_tau_dac_gpios));
 err_dt:
@@ -206,6 +220,8 @@ err_dt:
 
 static int snd_rpi_tau_dac_remove(struct platform_device *pdev)
 {
+	clk_put(mclk);
+
 	gpio_set_value(TAU_DAC_GPIO_MCLK_ENABLE, 0);
 	gpio_set_value(TAU_DAC_GPIO_MCLK_SELECT, 0);
 	gpio_free_array(snd_rpi_tau_dac_gpios, ARRAY_SIZE(snd_rpi_tau_dac_gpios));

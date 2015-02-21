@@ -6,6 +6,24 @@
 	compatible = "brcm,bcm2708";
 	
 	fragment@0 {
+		target = <&clocks>;
+		__overlay__ {
+		
+			osc22: osc@22.5792M {
+				compatible = "fixed-clock";
+				#clock-cells = <0>;
+				clock-frequency = <22579200>;
+			};
+			
+			osc24: osc@24.576M {
+				compatible = "fixed-clock";
+				#clock-cells = <0>;
+				clock-frequency = <24576000>;
+			};
+		};
+	};
+	
+	fragment@1 {
 		target = <&i2c1>;
 		__overlay__ {
 			#address-cells = <1>;
@@ -25,21 +43,48 @@
 				reg = <0x1b>;
 				status = "okay";
 			};
+			
+			si5351c: si5351c@60 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				#clock-cells = <1>;
+				compatible = "silabs,si5351c";
+ 				reg = <0x60>;
+ 				clocks = <&osc22>, <&osc24>;
+ 				status = "okay";
+ 				
+				clkout0 {
+					reg = <0>;
+					silabs,disable-state = <2>;
+					silabs,clock-source = <3>;
+				};
+
+				clkout1 {
+					reg = <1>;
+					silabs,disable-state = <0>;
+				};
+				
+				clkout4 {
+					reg = <4>;
+					silabs,disable-state = <0>;
+				};
+			};
 		};
 	};
 
-	fragment@1 {
+	fragment@2 {
 		target = <&sound>;
 		__overlay__ {
 			compatible = "singularity-audio,tau-dac";
 			tau-dac,card-name = "TauDAC V1.0";
 			i2s-controller = <&i2s>;
+			clocks = <&si5351c>;
 			codecs = <&wm8741_left>, <&wm8741_right>;
 			status = "okay";
 		};
 	};
 
-	fragment@2 {
+	fragment@3 {
 		target = <&i2s>;
 		__overlay__ {
 			status = "okay";
