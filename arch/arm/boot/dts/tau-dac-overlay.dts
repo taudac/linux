@@ -51,6 +51,7 @@
 				compatible = "silabs,si5351c";
  				reg = <0x60>;
  				clocks = <&osc22>, <&osc24>;
+ 				clock-names = "22.5792M", "24.576M";
  				status = "okay";
  				
 				clkout0 {
