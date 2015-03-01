@@ -44,13 +44,13 @@
 				status = "okay";
 			};
 			
-			si5351c: si5351c@60 {
+			si5351: si5351c@60 {
 				#address-cells = <1>;
 				#size-cells = <0>;
 				#clock-cells = <1>;
 				compatible = "silabs,si5351c";
  				reg = <0x60>;
- 				clocks = <&osc22>, <&osc24>;
+ 				clocks = <&osc22 0>, <&osc24 0>;
  				clock-names = "22.5792M", "24.576M";
  				status = "okay";
  				
@@ -79,7 +79,10 @@
 			compatible = "singularity-audio,tau-dac";
 			tau-dac,card-name = "TauDAC V1.0";
 			i2s-controller = <&i2s>;
-			clocks = <&si5351c>;
+			clocks = <&si5351 0>, <&si5351 2>, <&si5351 6>,
+			         <&si5351 7>, <&si5351 3>, <&si5351 5>;
+			clock-names = "lrclk-cpu", "lrclk-dacl", "lrclk-dacr",
+			              "bclk-cpu",  "bclk-dacl",  "bclk-dacr";
 			codecs = <&wm8741_left>, <&wm8741_right>;
 			status = "okay";
 		};

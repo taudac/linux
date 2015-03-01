@@ -38,9 +38,14 @@ static struct gpio snd_rpi_tau_dac_gpios[] = {
 
 
 /*
- * clock producer
+ * clocks
  */
-static struct clk *mclk;
+static struct clk *lrclk_cpu, 
+                  *lrclk_dacl, 
+                  *lrclk_dacr,
+                  *bclk_cpu,  
+                  *bclk_dacl,  
+                  *bclk_dacr;
 
 /*
  * asoc codecs
@@ -195,9 +200,10 @@ static int snd_rpi_tau_dac_probe(struct platform_device *pdev)
 		goto err_gpio;
 	}
 	
-	/* clock */
-	mclk = clk_get(&pdev->dev, NULL);
-	if (IS_ERR(mclk)) {
+	/* get clocks */
+	bclk_cpu = devm_clk_get(&pdev->dev, "bclk-cpu");
+	if (IS_ERR(bclk_cpu)) {
+		dev_err(&pdev->dev, "getting bclk-cpu failed: %d\n", ret);
 		goto err_clk;
 	}
 
@@ -220,8 +226,6 @@ err_dt:
 
 static int snd_rpi_tau_dac_remove(struct platform_device *pdev)
 {
-	clk_put(mclk);
-
 	gpio_set_value(TAU_DAC_GPIO_MCLK_ENABLE, 0);
 	gpio_set_value(TAU_DAC_GPIO_MCLK_SELECT, 0);
 	gpio_free_array(snd_rpi_tau_dac_gpios, ARRAY_SIZE(snd_rpi_tau_dac_gpios));
