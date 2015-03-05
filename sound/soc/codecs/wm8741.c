@@ -41,6 +41,7 @@ static const char *wm8741_supply_names[WM8741_NUM_SUPPLIES] = {
 
 /* codec private data */
 struct wm8741_priv {
+	struct wm8741_platform_data *pdata;
 	struct regmap *regmap;
 	struct regulator_bulk_data supplies[WM8741_NUM_SUPPLIES];
 	unsigned int sysclk;
@@ -492,6 +493,23 @@ static const struct regmap_config wm8741_regmap = {
 
 	.readable_reg = wm8741_readable,
 };
+
+static int wm8741_set_pdata_from_of(struct i2c_client *i2c,
+				    struct wm8741_platform_data *pdata)
+{
+	const struct device_node *np = i2c->dev.of_node;
+	u16 val = 0;
+	
+	if (of_property_read_u16(np, "diff-mode", &val) >= 0)
+		pdata->diff_mode = val;
+		
+	if (pdata->diff_mode > 3) {
+		dev_err(&i2c->dev, "Invalid diff-mode: %x\n", pdata->diff_mode);
+		return -EINVAL;
+	}
+
+	return 0;
+}
 
 #if IS_ENABLED(CONFIG_I2C)
 static int wm8741_i2c_probe(struct i2c_client *i2c,

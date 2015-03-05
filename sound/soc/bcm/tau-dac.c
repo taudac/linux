@@ -46,6 +46,15 @@ static struct clk *lrclk_cpu,
                   *bclk_cpu,  
                   *bclk_dacl,  
                   *bclk_dacr;
+                  
+static struct {
+	struct clk* ch;
+	char name[16];
+} tau_dac_clks[] = {
+	{NULL, "lrclk-cpu"},
+	{NULL, "lrclk-dacl"},
+	{NULL, "lrclk-dacr"},
+};
 
 /*
  * asoc codecs

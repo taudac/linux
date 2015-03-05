@@ -208,4 +208,8 @@
 
 #define  WM8741_SYSCLK 0
 
+struct wm8741_platform_data {
+	u16 diff_mode;   /* Differential Output Mode */
+};
+
 #endif
