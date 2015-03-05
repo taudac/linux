@@ -40,20 +40,21 @@ static struct gpio snd_rpi_tau_dac_gpios[] = {
 /*
  * clocks
  */
-static struct clk *lrclk_cpu, 
-                  *lrclk_dacl, 
-                  *lrclk_dacr,
-                  *bclk_cpu,  
-                  *bclk_dacl,  
-                  *bclk_dacr;
-                  
-static struct {
+struct tau_dac_clks {
 	struct clk* ch;
 	char name[16];
-} tau_dac_clks[] = {
+};
+
+static struct tau_dac_clks tau_dac_lrclks[] = {
 	{NULL, "lrclk-cpu"},
 	{NULL, "lrclk-dacl"},
 	{NULL, "lrclk-dacr"},
+};
+
+static struct tau_dac_clks tau_dac_bclks[] = {
+	{NULL, "bclk-cpu"},
+	{NULL, "bclk-dacl"},
+	{NULL, "bclk-dacr"},
 };
 
 /*
@@ -181,6 +182,20 @@ static int snd_rpi_tau_dac_parse_dt(struct device_node *np)
     return 0;
 }
 
+static int tau_dac_request_clocks(struct tau_dac_clks *clks, int n,
+                                  struct platform_device *pdev)
+{
+	int i;
+	
+	for (i = 0; i < n; i++) {
+		clks[i].ch = devm_clk_get(&pdev->dev, clks[i].name);
+		if (IS_ERR(clks[i].ch))
+			return -EINVAL;
+	}
+	
+	return 0;
+}
+
 static int snd_rpi_tau_dac_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -210,12 +225,20 @@ static int snd_rpi_tau_dac_probe(struct platform_device *pdev)
 	}
 	
 	/* get clocks */
-	bclk_cpu = devm_clk_get(&pdev->dev, "bclk-cpu");
-	if (IS_ERR(bclk_cpu)) {
-		dev_err(&pdev->dev, "getting bclk-cpu failed: %d\n", ret);
+	ret = tau_dac_request_clocks(tau_dac_lrclks, ARRAY_SIZE(tau_dac_lrclks), pdev);
+	
+	if (ret != 0) {
+		dev_err(&pdev->dev, "getting frame clocks failed: %d\n", ret);
 		goto err_clk;
 	}
+	
+	ret = tau_dac_request_clocks(tau_dac_bclks, ARRAY_SIZE(tau_dac_bclks), pdev);
 
+	if (ret != 0) {
+		dev_err(&pdev->dev, "getting bit clocks failed: %d\n", ret);
+		goto err_clk;
+	}
+	
 	/* register card */
 	ret = snd_soc_register_card(&snd_rpi_tau_dac);
 
