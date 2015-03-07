@@ -31,7 +31,7 @@
 #define TAU_DAC_GPIO_MCLK_SELECT 22
 
 
-static struct gpio snd_rpi_tau_dac_gpios[] = {
+static struct gpio tau_dac_gpios[] = {
 	{TAU_DAC_GPIO_MCLK_ENABLE, GPIOF_OUT_INIT_LOW, "TauDAC MCLK Enable Pin"},
 	{TAU_DAC_GPIO_MCLK_SELECT, GPIOF_OUT_INIT_LOW, "TauDAC MCLK Select Pin"},
 };
@@ -60,20 +60,7 @@ static struct tau_dac_clks tau_dac_bclks[] = {
 /*
  * asoc codecs
  */
-static struct i2c_board_info wm8741_i2c_devices[] = {
-	{
-		I2C_BOARD_INFO("wm8741", 0x1a),
-//		 .platform_data = &wm8741_pdata_left,
-	},
-	{
-		I2C_BOARD_INFO("wm8741", 0x1b),
-//		.platform_data = &wm8741_pdata_right,
-	},
-};
-
-struct i2c_client *wm8741_i2c_clients[ARRAY_SIZE(wm8741_i2c_devices)];
-
-static struct snd_soc_dai_link_component snd_rpi_tau_dac_codecs[] = {
+static struct snd_soc_dai_link_component tau_dac_codecs[] = {
 	{
 		.name     = "wm8741.1-001a",
 		.dai_name = "wm8741",
@@ -87,72 +74,72 @@ static struct snd_soc_dai_link_component snd_rpi_tau_dac_codecs[] = {
 /*
  * asoc digital audio interface
  */
-static int snd_rpi_tau_dac_init(struct snd_soc_pcm_runtime *rtd)
+static int tau_dac_init(struct snd_soc_pcm_runtime *rtd)
 {
 	int ret = 0;
 	return ret;
 }
 
-static int snd_rpi_tau_dac_startup(struct snd_pcm_substream *substream)
+static int tau_dac_startup(struct snd_pcm_substream *substream)
 {
 	int ret = 0;
 	return ret;
 }
 
-static int snd_rpi_tau_dac_hw_params(struct snd_pcm_substream *substream,
+static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 	                                 struct snd_pcm_hw_params *params)
 {
 	int ret = 0;
 	return ret;
 }
 
-static void snd_rpi_tau_dac_shutdown(struct snd_pcm_substream *substream)
+static void tau_dac_shutdown(struct snd_pcm_substream *substream)
 {
 
 }
 
-static struct snd_soc_ops snd_rpi_tau_dac_ops = {
-	.startup   = snd_rpi_tau_dac_startup,
-	.shutdown  = snd_rpi_tau_dac_shutdown,
-	.hw_params = snd_rpi_tau_dac_hw_params,
+static struct snd_soc_ops tau_dac_ops = {
+	.startup   = tau_dac_startup,
+	.shutdown  = tau_dac_shutdown,
+	.hw_params = tau_dac_hw_params,
 };
 
-static struct snd_soc_dai_link snd_rpi_tau_dac_dai[] = {
+static struct snd_soc_dai_link tau_dac_dai[] = {
 	{
 		.name          = "TauDAC",
 		.stream_name   = "TauDAC HiFi",
 		.cpu_dai_name  = "bcm2708-i2s.0",
 		.platform_name = "bcm2708-i2s.0",
-		.codecs        = snd_rpi_tau_dac_codecs,
-		.num_codecs    = ARRAY_SIZE(snd_rpi_tau_dac_codecs),
+		.codecs        = tau_dac_codecs,
+		.num_codecs    = ARRAY_SIZE(tau_dac_codecs),
 		.dai_fmt       = SND_SOC_DAIFMT_I2S |
 		                 SND_SOC_DAIFMT_NB_NF |
 		                 SND_SOC_DAIFMT_CBS_CFS,
 		.playback_only = true,
-		.ops  = &snd_rpi_tau_dac_ops,
-		.init = snd_rpi_tau_dac_init,
+		.ops  = &tau_dac_ops,
+		.init = tau_dac_init,
 	},
 };
 
 /*
  * asoc machine driver
  */
-static struct snd_soc_card snd_rpi_tau_dac = {
-	.name       = "snd_rpi_tau_dac",
-	.dai_link   = snd_rpi_tau_dac_dai,
-	.num_links  = ARRAY_SIZE(snd_rpi_tau_dac_dai),
+static struct snd_soc_card tau_dac = {
+	.name       = "tau_dac",
+	.dai_link   = tau_dac_dai,
+	.num_links  = ARRAY_SIZE(tau_dac_dai),
 };
 
 /*
  * platform device driver
  */
-static int snd_rpi_tau_dac_parse_dt(struct device_node *np)
+static int tau_dac_parse_dt(struct device_node *np)
 {
 	int i;
 
     struct device_node *i2s_node;
-    struct device_node *i2c_nodes[ARRAY_SIZE(snd_rpi_tau_dac_codecs)];
-    struct snd_soc_dai_link *dai = &snd_rpi_tau_dac_dai[0];
+    struct device_node *i2c_nodes[ARRAY_SIZE(tau_dac_codecs)];
+    struct snd_soc_dai_link *dai = &tau_dac_dai[0];
 
     i2s_node = of_parse_phandle(np, "i2s-controller", 0);
 
@@ -196,28 +183,28 @@ static int tau_dac_request_clocks(struct tau_dac_clks *clks, int n,
 	return 0;
 }
 
-static int snd_rpi_tau_dac_probe(struct platform_device *pdev)
+static int tau_dac_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct device_node *np = pdev->dev.of_node;
 
-	snd_rpi_tau_dac.dev = &pdev->dev;
+	tau_dac.dev = &pdev->dev;
 
 	/* parse device tree node info */
 	if (np != NULL) {
-		ret = snd_rpi_tau_dac_parse_dt(np);
+		ret = tau_dac_parse_dt(np);
 
 		if (ret != 0) {
 			dev_err(&pdev->dev, "parsing device tree info failed: %d\n", ret);
 			goto err_dt;
 		}
 	} else {
-		dev_err(&pdev->dev, "skipping device tree configuration\n");
+		dev_err(&pdev->dev, "only device tree supported\n");
+		return -EINVAL;
 	}
 
 	/* request gpio pins */
-	ret = gpio_request_array(snd_rpi_tau_dac_gpios,
-		ARRAY_SIZE(snd_rpi_tau_dac_gpios));
+	ret = gpio_request_array(tau_dac_gpios, ARRAY_SIZE(tau_dac_gpios));
 
 	if (ret != 0) {
 		dev_err(&pdev->dev, "gpio_request_array() failed: %d\n", ret);
@@ -225,14 +212,16 @@ static int snd_rpi_tau_dac_probe(struct platform_device *pdev)
 	}
 	
 	/* get clocks */
-	ret = tau_dac_request_clocks(tau_dac_lrclks, ARRAY_SIZE(tau_dac_lrclks), pdev);
+	ret = tau_dac_request_clocks(tau_dac_lrclks,
+			ARRAY_SIZE(tau_dac_lrclks), pdev);
 	
 	if (ret != 0) {
 		dev_err(&pdev->dev, "getting frame clocks failed: %d\n", ret);
 		goto err_clk;
 	}
 	
-	ret = tau_dac_request_clocks(tau_dac_bclks, ARRAY_SIZE(tau_dac_bclks), pdev);
+	ret = tau_dac_request_clocks(tau_dac_bclks,
+			ARRAY_SIZE(tau_dac_bclks), pdev);
 
 	if (ret != 0) {
 		dev_err(&pdev->dev, "getting bit clocks failed: %d\n", ret);
@@ -240,7 +229,7 @@ static int snd_rpi_tau_dac_probe(struct platform_device *pdev)
 	}
 	
 	/* register card */
-	ret = snd_soc_register_card(&snd_rpi_tau_dac);
+	ret = snd_soc_register_card(&tau_dac);
 
 	if (ret != 0) {
 		dev_err(&pdev->dev, "snd_soc_register_card() failed: %d\n", ret);
@@ -251,37 +240,37 @@ static int snd_rpi_tau_dac_probe(struct platform_device *pdev)
 	
 err_clk:
 err_gpio:
-	gpio_free_array(snd_rpi_tau_dac_gpios, ARRAY_SIZE(snd_rpi_tau_dac_gpios));
+	gpio_free_array(tau_dac_gpios, ARRAY_SIZE(tau_dac_gpios));
 err_dt:
 	return ret;
 }
 
-static int snd_rpi_tau_dac_remove(struct platform_device *pdev)
+static int tau_dac_remove(struct platform_device *pdev)
 {
 	gpio_set_value(TAU_DAC_GPIO_MCLK_ENABLE, 0);
 	gpio_set_value(TAU_DAC_GPIO_MCLK_SELECT, 0);
-	gpio_free_array(snd_rpi_tau_dac_gpios, ARRAY_SIZE(snd_rpi_tau_dac_gpios));
+	gpio_free_array(tau_dac_gpios, ARRAY_SIZE(tau_dac_gpios));
 
-	return snd_soc_unregister_card(&snd_rpi_tau_dac);
+	return snd_soc_unregister_card(&tau_dac);
 }
 
-static const struct of_device_id snd_rpi_tau_dac_of_match[] = {
+static const struct of_device_id tau_dac_of_match[] = {
 	{ .compatible = "singularity-audio,tau-dac", },
 	{},
 };
-MODULE_DEVICE_TABLE(of, snd_rpi_tau_dac_of_match);
+MODULE_DEVICE_TABLE(of, tau_dac_of_match);
 
-static struct platform_driver snd_rpi_tau_dac_driver = {
+static struct platform_driver tau_dac_driver = {
 	.driver = {
 		.name  = "snd-tau-dac",
 		.owner = THIS_MODULE,
-		.of_match_table = snd_rpi_tau_dac_of_match,
+		.of_match_table = tau_dac_of_match,
 	},
-	.probe  = snd_rpi_tau_dac_probe,
-	.remove = snd_rpi_tau_dac_remove,
+	.probe  = tau_dac_probe,
+	.remove = tau_dac_remove,
 };
 
-module_platform_driver(snd_rpi_tau_dac_driver);
+module_platform_driver(tau_dac_driver);
 
 MODULE_AUTHOR("Sergej Sawazki <taudac@gmx.de>");
 MODULE_DESCRIPTION("ASoC Driver for TauDAC");
