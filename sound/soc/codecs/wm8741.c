@@ -88,11 +88,25 @@ static int wm8741_reset(struct snd_soc_codec *codec)
 static const DECLARE_TLV_DB_SCALE(dac_tlv_fine, -12700, 13, 0);
 static const DECLARE_TLV_DB_SCALE(dac_tlv, -12700, 400, 0);
 
-static const struct snd_kcontrol_new wm8741_snd_controls[] = {
-SOC_DOUBLE_R_TLV("Fine Playback Volume", WM8741_DACLLSB_ATTENUATION,
-		 WM8741_DACRLSB_ATTENUATION, 1, 255, 1, dac_tlv_fine),
-SOC_DOUBLE_R_TLV("Playback Volume", WM8741_DACLMSB_ATTENUATION,
-		 WM8741_DACRMSB_ATTENUATION, 0, 511, 1, dac_tlv),
+static const struct snd_kcontrol_new wm8741_snd_controls_stereo[] = {
+	SOC_DOUBLE_R_TLV("Fine Playback Volume", WM8741_DACLLSB_ATTENUATION,
+		WM8741_DACRLSB_ATTENUATION, 1, 255, 1, dac_tlv_fine),
+	SOC_DOUBLE_R_TLV("Playback Volume", WM8741_DACLMSB_ATTENUATION,
+		WM8741_DACRMSB_ATTENUATION, 0, 511, 1, dac_tlv),
+};
+
+static const struct snd_kcontrol_new wm8741_snd_controls_mono_left[] = {
+	SOC_SINGLE_TLV("Fine Playback Volume Left", WM8741_DACLLSB_ATTENUATION,
+		1, 255, 1, dac_tlv_fine),
+	SOC_SINGLE_TLV("Playback Volume Left", WM8741_DACLMSB_ATTENUATION,
+		0, 511, 1, dac_tlv),
+};
+
+static const struct snd_kcontrol_new wm8741_snd_controls_mono_right[] = {
+	SOC_SINGLE_TLV("Fine Playback Volume Right", WM8741_DACRLSB_ATTENUATION,
+		1, 255, 1, dac_tlv_fine),
+	SOC_SINGLE_TLV("Playback Volume Right", WM8741_DACRMSB_ATTENUATION,
+		0, 511, 1, dac_tlv),
 };
 
 static const struct snd_soc_dapm_widget wm8741_dapm_widgets[] = {
@@ -399,7 +413,7 @@ static struct snd_soc_dai_driver wm8741_dai = {
 	.name = "wm8741",
 	.playback = {
 		.stream_name = "Playback",
-		.channels_min = 2,  /* Mono modes not yet supported */
+		.channels_min = 1,
 		.channels_max = 2,
 		.rates = WM8741_RATES,
 		.formats = WM8741_FORMATS,
@@ -416,6 +430,49 @@ static int wm8741_resume(struct snd_soc_codec *codec)
 #else
 #define wm8741_resume NULL
 #endif
+
+static void wm8741_configure(struct snd_soc_codec *codec)
+{
+	struct wm8741_platform_data *pdata = codec->dev->platform_data;
+
+	/* Configure differential mode */
+	snd_soc_update_bits(codec, WM8741_MODE_CONTROL_2,
+		WM8741_DIFF_MASK, pdata->diff_mode);
+
+	/* Change some default settings - latch VU */
+	snd_soc_update_bits(codec, WM8741_DACLLSB_ATTENUATION,
+		WM8741_UPDATELL, WM8741_UPDATELL);
+	snd_soc_update_bits(codec, WM8741_DACLMSB_ATTENUATION,
+		WM8741_UPDATELM, WM8741_UPDATELM);
+	snd_soc_update_bits(codec, WM8741_DACRLSB_ATTENUATION,
+		WM8741_UPDATERL, WM8741_UPDATERL);
+	snd_soc_update_bits(codec, WM8741_DACRMSB_ATTENUATION,
+		WM8741_UPDATERM, WM8741_UPDATERM);
+}
+
+static void wm8741_add_controls(struct snd_soc_codec *codec)
+{
+	struct wm8741_platform_data *pdata = codec->dev->platform_data;
+
+	switch (pdata->diff_mode) {
+	case WM8741_DIFF_MODE_STEREO:
+	case WM8741_DIFF_MODE_STEREO_REVERSED:
+		snd_soc_add_codec_controls(codec,
+			wm8741_snd_controls_stereo,
+			ARRAY_SIZE(wm8741_snd_controls_stereo));
+		break;
+	case WM8741_DIFF_MODE_MONO_LEFT:
+		snd_soc_add_codec_controls(codec,
+			wm8741_snd_controls_mono_left,
+			ARRAY_SIZE(wm8741_snd_controls_mono_left));
+		break;
+	case WM8741_DIFF_MODE_MONO_RIGHT:
+		snd_soc_add_codec_controls(codec,
+			wm8741_snd_controls_mono_right,
+			ARRAY_SIZE(wm8741_snd_controls_mono_right));
+		break;
+	}
+}
 
 static int wm8741_probe(struct snd_soc_codec *codec)
 {
@@ -435,15 +492,8 @@ static int wm8741_probe(struct snd_soc_codec *codec)
 		goto err_enable;
 	}
 
-	/* Change some default settings - latch VU */
-	snd_soc_update_bits(codec, WM8741_DACLLSB_ATTENUATION,
-			    WM8741_UPDATELL, WM8741_UPDATELL);
-	snd_soc_update_bits(codec, WM8741_DACLMSB_ATTENUATION,
-			    WM8741_UPDATELM, WM8741_UPDATELM);
-	snd_soc_update_bits(codec, WM8741_DACRLSB_ATTENUATION,
-			    WM8741_UPDATERL, WM8741_UPDATERL);
-	snd_soc_update_bits(codec, WM8741_DACRMSB_ATTENUATION,
-			    WM8741_UPDATERM, WM8741_UPDATERM);
+	wm8741_configure(codec);
+	wm8741_add_controls(codec);
 
 	dev_dbg(codec->dev, "Successful registration\n");
 	return ret;
@@ -468,8 +518,6 @@ static struct snd_soc_codec_driver soc_codec_dev_wm8741 = {
 	.remove =	wm8741_remove,
 	.resume =	wm8741_resume,
 
-	.controls = wm8741_snd_controls,
-	.num_controls = ARRAY_SIZE(wm8741_snd_controls),
 	.dapm_widgets = wm8741_dapm_widgets,
 	.num_dapm_widgets = ARRAY_SIZE(wm8741_dapm_widgets),
 	.dapm_routes = wm8741_dapm_routes,
@@ -499,9 +547,9 @@ static int wm8741_set_pdata(struct device *dev,
 			    struct wm8741_platform_data *pdata)
 {
 	const struct device_node *np = dev->of_node;
-	u16 val = 0;
+	u16 diff_mode = WM8741_DIFF_MODE_STEREO;
 	
-	if (pdata) {
+	if (pdata != NULL) {
 		wm8741->pdata = pdata;
 	} else {
 		wm8741->pdata = devm_kzalloc(dev,
@@ -513,15 +561,17 @@ static int wm8741_set_pdata(struct device *dev,
 		}
 
 		if (dev->of_node) {
-			if (of_property_read_u16(np, "diff-mode", &val) >= 0)
-				pdata->diff_mode = val;
+			if (of_property_read_u16(np, "diff-mode", &diff_mode) >= 0)
+				pdata->diff_mode = diff_mode;
 
-			if (pdata->diff_mode > 3) {
+			if (pdata->diff_mode > WM8741_DIFF_MODE_MONO_RIGHT) {
 				dev_err(dev, "Invalid diff-mode: %x\n", pdata->diff_mode);
 				return -EINVAL;
 			}
 		}
 	}
+
+	pdata = wm8741->pdata;
 
 	return 0;
 }
