@@ -114,7 +114,7 @@ static struct snd_soc_dai_link tau_dac_dai[] = {
 		.num_codecs    = ARRAY_SIZE(tau_dac_codecs),
 		.dai_fmt       = SND_SOC_DAIFMT_I2S |
 		                 SND_SOC_DAIFMT_NB_NF |
-		                 SND_SOC_DAIFMT_CBS_CFS,
+		                 SND_SOC_DAIFMT_CBM_CFM,
 		.playback_only = true,
 		.ops  = &tau_dac_ops,
 		.init = tau_dac_init,
@@ -170,12 +170,12 @@ static int tau_dac_parse_dt(struct device_node *np)
 }
 
 static int tau_dac_request_clocks(struct tau_dac_clks *clks, int n,
-                                  struct platform_device *pdev)
+		struct device *dev)
 {
 	int i;
 	
 	for (i = 0; i < n; i++) {
-		clks[i].ch = devm_clk_get(&pdev->dev, clks[i].name);
+		clks[i].ch = devm_clk_get(dev, clks[i].name);
 		if (IS_ERR(clks[i].ch))
 			return -EINVAL;
 	}
@@ -213,7 +213,7 @@ static int tau_dac_probe(struct platform_device *pdev)
 	
 	/* get clocks */
 	ret = tau_dac_request_clocks(tau_dac_lrclks,
-			ARRAY_SIZE(tau_dac_lrclks), pdev);
+			ARRAY_SIZE(tau_dac_lrclks), &pdev->dev);
 	
 	if (ret != 0) {
 		dev_err(&pdev->dev, "getting frame clocks failed: %d\n", ret);
@@ -221,7 +221,7 @@ static int tau_dac_probe(struct platform_device *pdev)
 	}
 	
 	ret = tau_dac_request_clocks(tau_dac_bclks,
-			ARRAY_SIZE(tau_dac_bclks), pdev);
+			ARRAY_SIZE(tau_dac_bclks), &pdev->dev);
 
 	if (ret != 0) {
 		dev_err(&pdev->dev, "getting bit clocks failed: %d\n", ret);
