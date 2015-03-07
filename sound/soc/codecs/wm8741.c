@@ -494,18 +494,33 @@ static const struct regmap_config wm8741_regmap = {
 	.readable_reg = wm8741_readable,
 };
 
-static int wm8741_set_pdata_from_of(struct i2c_client *i2c,
-				    struct wm8741_platform_data *pdata)
+static int wm8741_set_pdata(struct device *dev,
+			    struct wm8741_priv *wm8741,
+			    struct wm8741_platform_data *pdata)
 {
-	const struct device_node *np = i2c->dev.of_node;
+	const struct device_node *np = dev->of_node;
 	u16 val = 0;
 	
-	if (of_property_read_u16(np, "diff-mode", &val) >= 0)
-		pdata->diff_mode = val;
-		
-	if (pdata->diff_mode > 3) {
-		dev_err(&i2c->dev, "Invalid diff-mode: %x\n", pdata->diff_mode);
-		return -EINVAL;
+	if (pdata) {
+		wm8741->pdata = pdata;
+	} else {
+		wm8741->pdata = devm_kzalloc(dev,
+					sizeof(struct wm8741_platform_data),
+					GFP_KERNEL);
+		if (wm8741->pdata == NULL) {
+			dev_err(dev, "Failed to allocate pdata\n");
+			return -ENOMEM;
+		}
+
+		if (dev->of_node) {
+			if (of_property_read_u16(np, "diff-mode", &val) >= 0)
+				pdata->diff_mode = val;
+
+			if (pdata->diff_mode > 3) {
+				dev_err(dev, "Invalid diff-mode: %x\n", pdata->diff_mode);
+				return -EINVAL;
+			}
+		}
 	}
 
 	return 0;
@@ -515,6 +530,7 @@ static int wm8741_set_pdata_from_of(struct i2c_client *i2c,
 static int wm8741_i2c_probe(struct i2c_client *i2c,
 			    const struct i2c_device_id *id)
 {
+	struct wm8741_platform_data *pdata = dev_get_platdata(&i2c->dev);
 	struct wm8741_priv *wm8741;
 	int ret, i;
 
@@ -541,6 +557,12 @@ static int wm8741_i2c_probe(struct i2c_client *i2c,
 	}
 
 	i2c_set_clientdata(i2c, wm8741);
+
+	wm8741_set_pdata(&i2c->dev, wm8741, pdata);
+	if (ret != 0) {
+		dev_err(&i2c->dev, "Failed to set pdata: %d\n", ret);
+		return ret;
+	}
 
 	ret = snd_soc_register_codec(&i2c->dev,
 				     &soc_codec_dev_wm8741, &wm8741_dai, 1);
@@ -575,6 +597,7 @@ static struct i2c_driver wm8741_i2c_driver = {
 #if defined(CONFIG_SPI_MASTER)
 static int wm8741_spi_probe(struct spi_device *spi)
 {
+	struct wm8741_platform_data *pdata = dev_get_platdata(&spi->dev);
 	struct wm8741_priv *wm8741;
 	int ret, i;
 
@@ -601,6 +624,12 @@ static int wm8741_spi_probe(struct spi_device *spi)
 	}
 
 	spi_set_drvdata(spi, wm8741);
+
+	wm8741_set_pdata(&spi->dev, wm8741, pdata);
+	if (ret != 0) {
+		dev_err(&spi->dev, "Failed to set pdata: %d\n", ret);
+		return ret;
+	}
 
 	ret = snd_soc_register_codec(&spi->dev,
 			&soc_codec_dev_wm8741, &wm8741_dai, 1);
