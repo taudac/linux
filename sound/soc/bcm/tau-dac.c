@@ -19,6 +19,7 @@
 
 #include <sound/core.h>
 #include <sound/soc.h>
+#include <sound/pcm_params.h>
 
 #include <linux/gpio.h>
 #include <linux/i2c.h>
@@ -76,26 +77,43 @@ static struct snd_soc_dai_link_component tau_dac_codecs[] = {
  */
 static int tau_dac_init(struct snd_soc_pcm_runtime *rtd)
 {
-	int ret = 0;
-	return ret;
+	return 0;
 }
 
 static int tau_dac_startup(struct snd_pcm_substream *substream)
 {
-	int ret = 0;
-	return ret;
-}
-
-static int tau_dac_hw_params(struct snd_pcm_substream *substream,
-	                                 struct snd_pcm_hw_params *params)
-{
-	int ret = 0;
-	return ret;
+	// TODO: check rate constraints
+	return 0;
 }
 
 static void tau_dac_shutdown(struct snd_pcm_substream *substream)
 {
+	// TODO: disable mclk
+}
 
+static int tau_dac_hw_params(struct snd_pcm_substream *substream,
+		struct snd_pcm_hw_params *params)
+{
+	int ret, i;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct snd_soc_dai **codec_dais = rtd->codec_dais;
+	int num_codecs = rtd->num_codecs;
+
+	unsigned int rate = params_rate(params);
+	int width = params_width(params);
+
+	unsigned int mclk_freq = 24576000;
+	// TODO: select mclk, set mclk_freq based on rate
+
+	for (i = 0; i < num_codecs; i++) {
+		/* set codecs sysclk */
+		ret = snd_soc_dai_set_sysclk(codec_dais[i],
+			WM8741_SYSCLK, mclk_freq, SND_SOC_CLOCK_IN);
+	}
+
+	// TODO: enable mclk
+	return ret;
 }
 
 static struct snd_soc_ops tau_dac_ops = {
