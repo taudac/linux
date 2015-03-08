@@ -41,7 +41,7 @@ static const char *wm8741_supply_names[WM8741_NUM_SUPPLIES] = {
 
 /* codec private data */
 struct wm8741_priv {
-	struct wm8741_platform_data *pdata;
+	struct wm8741_platform_data pdata;
 	struct regmap *regmap;
 	struct regulator_bulk_data supplies[WM8741_NUM_SUPPLIES];
 	unsigned int sysclk;
@@ -431,13 +431,22 @@ static int wm8741_resume(struct snd_soc_codec *codec)
 #define wm8741_resume NULL
 #endif
 
-static void wm8741_configure(struct snd_soc_codec *codec)
+static int wm8741_configure(struct snd_soc_codec *codec)
 {
-	struct wm8741_platform_data *pdata = codec->dev->platform_data;
+	struct wm8741_priv *wm8741 = snd_soc_codec_get_drvdata(codec);
 
 	/* Configure differential mode */
-	snd_soc_update_bits(codec, WM8741_MODE_CONTROL_2,
-		WM8741_DIFF_MASK, pdata->diff_mode);
+	switch (wm8741->pdata.diff_mode) {
+	case WM8741_DIFF_MODE_STEREO:
+	case WM8741_DIFF_MODE_STEREO_REVERSED:
+	case WM8741_DIFF_MODE_MONO_LEFT:
+	case WM8741_DIFF_MODE_MONO_RIGHT:
+		snd_soc_update_bits(codec, WM8741_MODE_CONTROL_2, WM8741_DIFF_MASK,
+				wm8741->pdata.diff_mode << WM8741_DIFF_SHIFT);
+		break;
+	default:
+		return -EINVAL;
+	}
 
 	/* Change some default settings - latch VU */
 	snd_soc_update_bits(codec, WM8741_DACLLSB_ATTENUATION,
@@ -448,13 +457,15 @@ static void wm8741_configure(struct snd_soc_codec *codec)
 		WM8741_UPDATERL, WM8741_UPDATERL);
 	snd_soc_update_bits(codec, WM8741_DACRMSB_ATTENUATION,
 		WM8741_UPDATERM, WM8741_UPDATERM);
+
+	return 0;
 }
 
-static void wm8741_add_controls(struct snd_soc_codec *codec)
+static int wm8741_add_controls(struct snd_soc_codec *codec)
 {
-	struct wm8741_platform_data *pdata = codec->dev->platform_data;
+	struct wm8741_priv *wm8741 = snd_soc_codec_get_drvdata(codec);
 
-	switch (pdata->diff_mode) {
+	switch (wm8741->pdata.diff_mode) {
 	case WM8741_DIFF_MODE_STEREO:
 	case WM8741_DIFF_MODE_STEREO_REVERSED:
 		snd_soc_add_codec_controls(codec,
@@ -471,7 +482,11 @@ static void wm8741_add_controls(struct snd_soc_codec *codec)
 			wm8741_snd_controls_mono_right,
 			ARRAY_SIZE(wm8741_snd_controls_mono_right));
 		break;
+	default:
+		return -EINVAL;
 	}
+
+	return 0;
 }
 
 static int wm8741_probe(struct snd_soc_codec *codec)
@@ -492,8 +507,17 @@ static int wm8741_probe(struct snd_soc_codec *codec)
 		goto err_enable;
 	}
 
-	wm8741_configure(codec);
-	wm8741_add_controls(codec);
+	ret = wm8741_configure(codec);
+	if (ret < 0) {
+		dev_err(codec->dev, "Failed to change default settings\n");
+		goto err_enable;
+	}
+
+	ret = wm8741_add_controls(codec);
+	if (ret < 0) {
+		dev_err(codec->dev, "Failed to add controls\n");
+		goto err_enable;
+	}
 
 	dev_dbg(codec->dev, "Successful registration\n");
 	return ret;
@@ -545,36 +569,18 @@ static const struct regmap_config wm8741_regmap = {
 	.readable_reg = wm8741_readable,
 };
 
-static int wm8741_set_pdata(struct device *dev,
-			    struct wm8741_priv *wm8741,
-			    struct wm8741_platform_data *pdata)
+static int wm8741_set_pdata(struct device *dev, struct wm8741_priv *wm8741)
 {
-	const struct device_node *np = dev->of_node;
-	u16 diff_mode = WM8741_DIFF_MODE_STEREO;
-	
-	if (pdata != NULL) {
-		wm8741->pdata = pdata;
+	const struct wm8741_platform_data *pdata = dev_get_platdata(dev);
+	u32 diff_mode;
+
+	if (dev->of_node) {
+		if (of_property_read_u32(dev->of_node, "diff-mode", &diff_mode) >= 0)
+			wm8741->pdata.diff_mode = diff_mode;
 	} else {
-		wm8741->pdata = devm_kzalloc(dev,
-					sizeof(struct wm8741_platform_data),
-					GFP_KERNEL);
-		if (wm8741->pdata == NULL) {
-			dev_err(dev, "Failed to allocate pdata\n");
-			return -ENOMEM;
-		}
-
-		if (dev->of_node) {
-			if (of_property_read_u16(np, "diff-mode", &diff_mode) >= 0)
-				pdata->diff_mode = diff_mode;
-
-			if (pdata->diff_mode > WM8741_DIFF_MODE_MONO_RIGHT) {
-				dev_err(dev, "Invalid diff-mode: %x\n", pdata->diff_mode);
-				return -EINVAL;
-			}
-		}
+		if (pdata != NULL)
+			memcpy(&wm8741->pdata, pdata, sizeof(wm8741->pdata));
 	}
-
-	pdata = wm8741->pdata;
 
 	return 0;
 }
@@ -583,7 +589,6 @@ static int wm8741_set_pdata(struct device *dev,
 static int wm8741_i2c_probe(struct i2c_client *i2c,
 			    const struct i2c_device_id *id)
 {
-	struct wm8741_platform_data *pdata = dev_get_platdata(&i2c->dev);
 	struct wm8741_priv *wm8741;
 	int ret, i;
 
@@ -609,13 +614,13 @@ static int wm8741_i2c_probe(struct i2c_client *i2c,
 		return ret;
 	}
 
-	i2c_set_clientdata(i2c, wm8741);
-
-	wm8741_set_pdata(&i2c->dev, wm8741, pdata);
+	wm8741_set_pdata(&i2c->dev, wm8741);
 	if (ret != 0) {
 		dev_err(&i2c->dev, "Failed to set pdata: %d\n", ret);
 		return ret;
 	}
+
+	i2c_set_clientdata(i2c, wm8741);
 
 	ret = snd_soc_register_codec(&i2c->dev,
 				     &soc_codec_dev_wm8741, &wm8741_dai, 1);
@@ -650,7 +655,6 @@ static struct i2c_driver wm8741_i2c_driver = {
 #if defined(CONFIG_SPI_MASTER)
 static int wm8741_spi_probe(struct spi_device *spi)
 {
-	struct wm8741_platform_data *pdata = dev_get_platdata(&spi->dev);
 	struct wm8741_priv *wm8741;
 	int ret, i;
 
@@ -676,13 +680,13 @@ static int wm8741_spi_probe(struct spi_device *spi)
 		return ret;
 	}
 
-	spi_set_drvdata(spi, wm8741);
-
-	wm8741_set_pdata(&spi->dev, wm8741, pdata);
+	wm8741_set_pdata(&spi->dev, wm8741);
 	if (ret != 0) {
 		dev_err(&spi->dev, "Failed to set pdata: %d\n", ret);
 		return ret;
 	}
+
+	spi_set_drvdata(spi, wm8741);
 
 	ret = snd_soc_register_codec(&spi->dev,
 			&soc_codec_dev_wm8741, &wm8741_dai, 1);

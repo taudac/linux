@@ -12,8 +12,8 @@ Required properties:
 
 Optional properties:
 
-  - diff-mode: Differential output mode configuration. Default register value 
-    for R8 (DIFF). If absent, the default is 0, shall be:
+  - diff-mode: Differential output mode configuration. Default value for field 
+    DIFF in register R8 (MODE_CONTROL_2). If absent, the default is 0, shall be:
     0 = stereo
     1 = mono left
     2 = stereo reversed

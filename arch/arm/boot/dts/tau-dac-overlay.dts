@@ -45,7 +45,7 @@
 				diff-mode = <3>;
 				status = "okay";
 			};
-			
+/*			
 			si5351: si5351c@60 {
 				#address-cells = <1>;
 				#size-cells = <0>;
@@ -72,6 +72,7 @@
 					silabs,disable-state = <0>;
 				};
 			};
+*/			
 		};
 	};
 
@@ -81,10 +82,12 @@
 			compatible = "singularity-audio,tau-dac";
 			tau-dac,card-name = "TauDAC V1.0";
 			i2s-controller = <&i2s>;
+/*			
 			clocks = <&si5351 0>, <&si5351 2>, <&si5351 6>,
 			         <&si5351 7>, <&si5351 3>, <&si5351 5>;
 			clock-names = "lrclk-cpu", "lrclk-dacl", "lrclk-dacr",
 			              "bclk-cpu",  "bclk-dacl",  "bclk-dacr";
+*/			              
 			codecs = <&wm8741_left>, <&wm8741_right>;
 			status = "okay";
 		};

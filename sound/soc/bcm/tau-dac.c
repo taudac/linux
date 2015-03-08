@@ -114,7 +114,7 @@ static struct snd_soc_dai_link tau_dac_dai[] = {
 		.num_codecs    = ARRAY_SIZE(tau_dac_codecs),
 		.dai_fmt       = SND_SOC_DAIFMT_I2S |
 		                 SND_SOC_DAIFMT_NB_NF |
-		                 SND_SOC_DAIFMT_CBM_CFM,
+						 SND_SOC_DAIFMT_CBS_CFS,
 		.playback_only = true,
 		.ops  = &tau_dac_ops,
 		.init = tau_dac_init,
@@ -174,6 +174,9 @@ static int tau_dac_request_clocks(struct tau_dac_clks *clks, int n,
 {
 	int i;
 	
+	// DEBUG
+	return 0;
+
 	for (i = 0; i < n; i++) {
 		clks[i].ch = devm_clk_get(dev, clks[i].name);
 		if (IS_ERR(clks[i].ch))
