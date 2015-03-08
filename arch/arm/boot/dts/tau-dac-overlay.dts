@@ -6,6 +6,18 @@
 	compatible = "brcm,bcm2708";
 	
 	fragment@0 {
+		target = <&gpio>;
+		__overlay__ {
+			
+			tau_dac_pins: tau_dac_pins {
+				brcm,pins = <22 27>;
+				brcm,function = <1>;
+				brcm,pull = <0>;
+			};
+		};
+	};
+	
+	fragment@1 {
 		target-path = "/clocks";
 		__overlay__ {
 		
@@ -23,7 +35,7 @@
 		};
 	};
 	
-	fragment@1 {
+	fragment@2 {
 		target = <&i2c1>;
 		__overlay__ {
 			#address-cells = <1>;
@@ -76,12 +88,17 @@
 		};
 	};
 
-	fragment@2 {
+	fragment@3 {
 		target = <&sound>;
 		__overlay__ {
 			compatible = "singularity-audio,tau-dac";
 			tau-dac,card-name = "TauDAC V1.0";
 			i2s-controller = <&i2s>;
+			
+			pinctrl-names = "default";
+			pinctrl-0 = <&tau_dac_pins>;
+			gpio-mclk-sel = <&gpio 22 0>;
+			gpio-mclk-ena = <&gpio 27 0>;
 /*			
 			clocks = <&si5351 0>, <&si5351 2>, <&si5351 6>,
 			         <&si5351 7>, <&si5351 3>, <&si5351 5>;
@@ -93,7 +110,7 @@
 		};
 	};
 
-	fragment@3 {
+	fragment@4 {
 		target = <&i2s>;
 		__overlay__ {
 			status = "okay";

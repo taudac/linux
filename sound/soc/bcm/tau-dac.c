@@ -28,14 +28,15 @@
 #include "../codecs/wm8741.h"
 
 
-#define TAU_DAC_GPIO_MCLK_ENABLE 27
-#define TAU_DAC_GPIO_MCLK_SELECT 22
+//#define TAU_DAC_GPIO_MCLK_ENABLE 27
+//#define TAU_DAC_GPIO_MCLK_SELECT 22
 
-
+/*
 static struct gpio tau_dac_gpios[] = {
 	{TAU_DAC_GPIO_MCLK_ENABLE, GPIOF_OUT_INIT_LOW, "TauDAC MCLK Enable Pin"},
 	{TAU_DAC_GPIO_MCLK_SELECT, GPIOF_OUT_INIT_LOW, "TauDAC MCLK Select Pin"},
 };
+*/
 
 
 /*
@@ -57,6 +58,18 @@ static struct tau_dac_clks tau_dac_bclks[] = {
 	{NULL, "bclk-dacl"},
 	{NULL, "bclk-dacr"},
 };
+
+static void tau_dac_enable_mclk(int index)
+{
+	gpio_set_value(gpio_mclk_sel, index);
+	gpio_set_value(gpio_mclk_ena, 1);
+	// TODO: msleep(20);
+}
+
+static void tau_dac_disable_mclk(void)
+{
+	gpio_set_value(gpio_mclk_ena, 0);
+}
 
 /*
  * asoc codecs
@@ -190,7 +203,11 @@ static int tau_dac_parse_dt(struct device_node *np)
 	struct device_node *i2s_node;
 	struct device_node *i2c_nodes[ARRAY_SIZE(tau_dac_codecs)];
 	struct snd_soc_dai_link *dai = &tau_dac_dai[0];
+	
+	int gpio, flags;
+	enum of_gpio_flags of_flags;
 
+	/* dais */
 	i2s_node = of_parse_phandle(np, "i2s-controller", 0);
 
 	if (i2s_node == NULL)
@@ -210,8 +227,22 @@ static int tau_dac_parse_dt(struct device_node *np)
 		dai->codecs[i].name = NULL;
 		dai->codecs[i].of_node = i2c_nodes[i];
 	}
+	
+	/* gpios */
+	if (of_find_property(np, "gpio-mclk-sel", NULL)) {
+		gpio_mclk_sel = of_get_named_gpio_flags(np, "gpio-mclk-sel", 0, &of_flags);
+		if (!gpio_is_valid(gpio))
+			return -EINVAL;
+		
+		flags = (of_flags & OF_GPIO_ACTIVE_LOW) ? GPIOF_OUT_INIT_LOW :
+				GPIOF_OUT_INIT_HIGH;
+				
+		ret = devm_gpio_request_one(dev, gpio, flags,
+				dev->driver->name);
+		
+		// TODO: if (ret != 0) dev_err();
+	}
 
-    // TODO: get gpio info
 
 //	if (snd_soc_of_parse_card_name(card, "atmel,model") != 0)
 //		dev_err(&pdev->dev, "snd_soc_of_parse_card_name() failed\n");
@@ -257,12 +288,13 @@ static int tau_dac_probe(struct platform_device *pdev)
 	}
 
 	/* request gpio pins */
-	ret = gpio_request_array(tau_dac_gpios, ARRAY_SIZE(tau_dac_gpios));
-
+//	ret = gpio_request_array(tau_dac_gpios, ARRAY_SIZE(tau_dac_gpios));
+/*
 	if (ret != 0) {
 		dev_err(&pdev->dev, "gpio_request_array() failed: %d\n", ret);
 		goto err_gpio;
 	}
+*/
 	
 	/* get clocks */
 	ret = tau_dac_request_clocks(tau_dac_lrclks,
@@ -292,8 +324,8 @@ static int tau_dac_probe(struct platform_device *pdev)
 	return ret;
 	
 err_clk:
-err_gpio:
-	gpio_free_array(tau_dac_gpios, ARRAY_SIZE(tau_dac_gpios));
+//err_gpio:
+//	gpio_free_array(tau_dac_gpios, ARRAY_SIZE(tau_dac_gpios));
 err_dt:
 	return ret;
 }
