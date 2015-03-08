@@ -100,19 +100,51 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_dai **codec_dais = rtd->codec_dais;
 	int num_codecs = rtd->num_codecs;
 
+	unsigned int mclk_freq;	
 	unsigned int rate = params_rate(params);
 	int width = params_width(params);
-
-	unsigned int mclk_freq = 24576000;
-	// TODO: select mclk, set mclk_freq based on rate
+	
+	switch (rate) {
+	case 44100:
+	case 88200:
+	case 176400: // TODO: check these rates in wm8741.c 168
+		mclk_freq = 22579200;
+		break;
+	case 32000:
+	case 48000:
+	case 96000:
+	case 192000:
+		mclk_freq = 24576000;
+		break;
+	default:
+		return -EINVAL;
+	}
+	
+	snd_soc_dai_set_bclk_ratio(cpu_dai, 32 * 2);
 
 	for (i = 0; i < num_codecs; i++) {
 		/* set codecs sysclk */
 		ret = snd_soc_dai_set_sysclk(codec_dais[i],
 			WM8741_SYSCLK, mclk_freq, SND_SOC_CLOCK_IN);
+		if (ret != 0) 
+			 return ret;
+	}
+	
+	/* set cpu DAI configuration, using external bclk */
+	ret = snd_soc_dai_set_fmt(cpu_dai,
+		SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM);
+	if (ret != 0)
+		return ret;
+	
+	/* set codec DAI configuration */
+	for (i = 0; i < num_codecs; i++) {
+		ret = snd_soc_dai_set_fmt(codec_dais[i],
+			SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS);
+		if (ret != 0)
+			return ret;
 	}
 
-	// TODO: enable mclk
+	// TODO: enable mclk, lrclk, bclk
 	return ret;
 }
 
@@ -132,7 +164,7 @@ static struct snd_soc_dai_link tau_dac_dai[] = {
 		.num_codecs    = ARRAY_SIZE(tau_dac_codecs),
 		.dai_fmt       = SND_SOC_DAIFMT_I2S |
 		                 SND_SOC_DAIFMT_NB_NF |
-						 SND_SOC_DAIFMT_CBS_CFS,
+		                 SND_SOC_DAIFMT_CBS_CFS,
 		.playback_only = true,
 		.ops  = &tau_dac_ops,
 		.init = tau_dac_init,
@@ -155,29 +187,29 @@ static int tau_dac_parse_dt(struct device_node *np)
 {
 	int i;
 
-    struct device_node *i2s_node;
-    struct device_node *i2c_nodes[ARRAY_SIZE(tau_dac_codecs)];
-    struct snd_soc_dai_link *dai = &tau_dac_dai[0];
+	struct device_node *i2s_node;
+	struct device_node *i2c_nodes[ARRAY_SIZE(tau_dac_codecs)];
+	struct snd_soc_dai_link *dai = &tau_dac_dai[0];
 
-    i2s_node = of_parse_phandle(np, "i2s-controller", 0);
+	i2s_node = of_parse_phandle(np, "i2s-controller", 0);
 
-    if (i2s_node == NULL)
-    	return -EINVAL;
+	if (i2s_node == NULL)
+		return -EINVAL;
 
 	dai->cpu_dai_name = NULL;
 	dai->cpu_of_node = i2s_node;
 	dai->platform_name = NULL;
 	dai->platform_of_node = i2s_node;
 
-    for (i = 0; i < ARRAY_SIZE(i2c_nodes); i++) {
-    	i2c_nodes[i] = of_parse_phandle(np, "codecs", i);
+	for (i = 0; i < ARRAY_SIZE(i2c_nodes); i++) {
+		i2c_nodes[i] = of_parse_phandle(np, "codecs", i);
 
-    	if (i2c_nodes[i] == NULL)
-    		return -EINVAL;
+		if (i2c_nodes[i] == NULL)
+			return -EINVAL;
 
 		dai->codecs[i].name = NULL;
 		dai->codecs[i].of_node = i2c_nodes[i];
-    }
+	}
 
     // TODO: get gpio info
 
