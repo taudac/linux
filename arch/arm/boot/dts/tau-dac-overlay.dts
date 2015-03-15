@@ -49,7 +49,7 @@
 				diff-mode = <1>;
 				status = "okay";
 			};
-			
+
 			wm8741_right: wm8741@1b {
 				#sound-dai-cells = <0>;
 				compatible = "wlf,wm8741";
@@ -57,17 +57,17 @@
 				diff-mode = <3>;
 				status = "okay";
 			};
-/*			
+
 			si5351: si5351c@60 {
 				#address-cells = <1>;
 				#size-cells = <0>;
 				#clock-cells = <1>;
 				compatible = "silabs,si5351c";
- 				reg = <0x60>;
- 				clocks = <&osc22 0>, <&osc24 0>;
- 				clock-names = "22.5792M", "24.576M";
- 				status = "okay";
- 				
+				reg = <0x60>;
+				clocks = <&osc22 0>, <&osc24 0>;
+				clock-names = "22.5792M", "24.576M";
+				status = "okay";
+
 				clkout0 {
 					reg = <0>;
 					silabs,disable-state = <2>;
@@ -78,13 +78,42 @@
 					reg = <1>;
 					silabs,disable-state = <0>;
 				};
-				
+
+				clkout2 {
+					reg = <2>;
+					silabs,disable-state = <2>;
+					silabs,clock-source = <3>;
+				};
+
+				clkout3 {
+					reg = <3>;
+					silabs,disable-state = <2>;
+					silabs,clock-source = <3>;
+				};
+
 				clkout4 {
 					reg = <4>;
 					silabs,disable-state = <0>;
 				};
+
+				clkout5 {
+					reg = <5>;
+					silabs,disable-state = <2>;
+					silabs,clock-source = <3>;
+				};
+
+				clkout6 {
+					reg = <6>;
+					silabs,disable-state = <2>;
+					silabs,clock-source = <3>;
+				};
+
+				clkout7 {
+					reg = <7>;
+					silabs,disable-state = <2>;
+					silabs,clock-source = <3>;
+				};
 			};
-*/			
 		};
 	};
 
@@ -99,12 +128,12 @@
 			pinctrl-0 = <&tau_dac_pins>;
 			gpio-mclk-sel = <&gpio 22 0>;
 			gpio-mclk-ena = <&gpio 27 0>;
-/*			
+
 			clocks = <&si5351 0>, <&si5351 2>, <&si5351 6>,
 			         <&si5351 7>, <&si5351 3>, <&si5351 5>;
 			clock-names = "lrclk-cpu", "lrclk-dacl", "lrclk-dacr",
 			              "bclk-cpu",  "bclk-dacl",  "bclk-dacr";
-*/			              
+
 			codecs = <&wm8741_left>, <&wm8741_right>;
 			status = "okay";
 		};
