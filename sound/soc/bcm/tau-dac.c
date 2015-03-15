@@ -27,15 +27,20 @@
 
 #include "../codecs/wm8741.h"
 
+enum {
+	LRCLK_CPU,
+	LRCLK_DACL,
+	LRCLK_DACR,
+	BCLK_CPU,
+	BCLK_DACL,
+	BCLK_DACR,
+	MAX_I2S_CLOCKS
+};
+
 struct snd_soc_card_drvdata {
 	unsigned gpio_mclk_sel;
 	unsigned gpio_mclk_ena;
-	struct clk* lrclk_cpu;
-	struct clk* lrclk_dacl;
-	struct clk* lrclk_dacr;
-	struct clk* bclk_cpu;
-	struct clk* bclk_dacl;
-	struct clk* bclk_dacr;
+	struct clk* i2s_clk[MAX_I2S_CLOCKS];
 };
 
 static void tau_dac_enable_mclk(struct snd_soc_card_drvdata* drvdata,
@@ -61,34 +66,78 @@ static void tau_dac_disable_mclk(struct snd_soc_card_drvdata* drvdata)
 
 static int tau_dac_prepare_i2s_clk(struct snd_soc_card_drvdata* drvdata)
 {
-	int ret;
+	int ret, i;
 	
-	ret = clk_prepare(drvdata->bclk_cpu);
-	if (ret != 0)
-		return ret;
+	for (i = 0; i < MAX_I2S_CLOCKS; i++) {
+		ret = clk_prepare(drvdata->i2s_clk[i]);
+		if (ret != 0)
+			return ret;
+	}
 		
 	return 0;
 }
 
 static void tau_dac_unprepare_i2s_clk(struct snd_soc_card_drvdata* drvdata)
 {
-	clk_unprepare(drvdata->bclk_cpu);
+	int i;
+	
+	for (i = 0; i < MAX_I2S_CLOCKS; i++) {
+		clk_unprepare(drvdata->i2s_clk[i]);
+	}
 }
 
-static void tau_dac_enable_i2s_clk(struct snd_soc_card_drvdata* drvdata)
+static int tau_dac_enable_i2s_clk(struct snd_soc_card_drvdata* drvdata)
 {
-	clk_enable(drvdata->bclk_cpu); //TODO: return ret
+	int ret, i;
+	
+	for (i = 0; i < MAX_I2S_CLOCKS; i++) {
+		ret = clk_enable(drvdata->i2s_clk[i]);
+		if (ret != 0)
+			return ret;
+	}
+	
+	return 0;
 }
 
 static void tau_dac_disable_i2s_clk(struct snd_soc_card_drvdata* drvdata)
 {
-	clk_disable(drvdata->bclk_cpu);
+	int i;
+	
+	for (i = 0; i < MAX_I2S_CLOCKS; i++) {
+		clk_disable(drvdata->i2s_clk[i]);
+	}
 }
 
-static void tau_dac_set_i2s_clk(struct snd_soc_card_drvdata* drvdata,
+static int tau_dac_set_i2s_clk(struct snd_soc_card_drvdata* drvdata,
 		unsigned long lrclk_rate, unsigned long bclk_rate)
 {
-	clk_set_rate(drvdata->bclk_cpu, bclk_rate);
+	int ret;
+	
+	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_CPU], lrclk_rate);
+	if (ret != 0)
+		return ret;
+	
+	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_DACL], lrclk_rate);
+	if (ret != 0)
+		return ret;
+	
+	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_DACR], lrclk_rate);
+	if (ret != 0)
+		return ret;
+		
+	ret = clk_set_rate(drvdata->i2s_clk[BCLK_CPU], bclk_rate);
+	if (ret != 0)
+		return ret;
+		
+	ret = clk_set_rate(drvdata->i2s_clk[BCLK_DACL], bclk_rate);
+	if (ret != 0)
+		return ret;
+		
+	ret = clk_set_rate(drvdata->i2s_clk[BCLK_DACR], bclk_rate);
+	if (ret != 0)
+		return ret;
+		
+	return 0;
 }
 
 /*
@@ -329,28 +378,28 @@ static int tau_dac_set_gpios(struct device *dev,
 static int tau_dac_set_clocks(struct device *dev,
 		struct snd_soc_card_drvdata *drvdata)
 {
-	drvdata->lrclk_cpu = devm_clk_get(dev, "lrclk-cpu");
-	if (IS_ERR(drvdata->lrclk_cpu))
+	drvdata->i2s_clk[LRCLK_CPU] = devm_clk_get(dev, "lrclk-cpu");
+	if (IS_ERR(drvdata->i2s_clk[LRCLK_CPU]))
 		return -EINVAL;
 
-	drvdata->lrclk_dacl = devm_clk_get(dev, "lrclk-dacl");
-	if (IS_ERR(drvdata->lrclk_dacl))
+	drvdata->i2s_clk[LRCLK_DACL] = devm_clk_get(dev, "lrclk-dacl");
+	if (IS_ERR(drvdata->i2s_clk[LRCLK_CPU]))
 		return -EINVAL;
 
-	drvdata->lrclk_dacr = devm_clk_get(dev, "lrclk-dacr");
-	if (IS_ERR(drvdata->lrclk_dacr))
+	drvdata->i2s_clk[LRCLK_DACR] = devm_clk_get(dev, "lrclk-dacr");
+	if (IS_ERR(drvdata->i2s_clk[LRCLK_CPU]))
 		return -EINVAL;
 
-	drvdata->bclk_cpu = devm_clk_get(dev, "bclk-cpu");
-	if (IS_ERR(drvdata->bclk_cpu))
+	drvdata->i2s_clk[BCLK_CPU] = devm_clk_get(dev, "bclk-cpu");
+	if (IS_ERR(drvdata->i2s_clk[LRCLK_CPU]))
 		return -EINVAL;
 
-	drvdata->bclk_dacl = devm_clk_get(dev, "bclk-dacl");
-	if (IS_ERR(drvdata->bclk_dacl))
+	drvdata->i2s_clk[BCLK_DACL] = devm_clk_get(dev, "bclk-dacl");
+	if (IS_ERR(drvdata->i2s_clk[LRCLK_CPU]))
 		return -EINVAL;
 
-	drvdata->bclk_dacr = devm_clk_get(dev, "bclk-dacr");
-	if (IS_ERR(drvdata->bclk_dacr))
+	drvdata->i2s_clk[BCLK_DACR] = devm_clk_get(dev, "bclk-dacr");
+	if (IS_ERR(drvdata->i2s_clk[LRCLK_CPU]))
 		return -EINVAL;
 
 	return 0;
