@@ -82,8 +82,8 @@ static int tau_dac_init(struct snd_soc_pcm_runtime *rtd)
 	int num_codecs = rtd->num_codecs;
 	struct snd_soc_dai **codec_dais = rtd->codec_dais;
 
-	//unsigned int mclk_freq = 22579200;
-	unsigned int mclk_freq = 24576000;
+	unsigned int mclk_freq = 22579200;
+	//unsigned int mclk_freq = 24576000;
 
 	dev_err(rtd->card->dev, __FUNCTION__);
 
@@ -259,8 +259,8 @@ static int tau_dac_get_gpio_from_of(struct device_node *np,
 			return -EINVAL;
 
 		*gpio = of_gpio;
-		*flags = (of_flags & OF_GPIO_ACTIVE_LOW) ? GPIOF_OUT_INIT_LOW :
-				GPIOF_OUT_INIT_HIGH;
+		*flags = (of_flags & OF_GPIO_ACTIVE_LOW) ? GPIOF_OUT_INIT_HIGH :
+				GPIOF_OUT_INIT_LOW;
 
 		return 0;
 	}
