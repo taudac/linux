@@ -127,24 +127,24 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 	
-	snd_soc_dai_set_bclk_ratio(cpu_dai, 32 * 2);
-
-	for (i = 0; i < num_codecs; i++) {
-		/* set codecs sysclk */
-		ret = snd_soc_dai_set_sysclk(codec_dais[i],
-			WM8741_SYSCLK, mclk_freq, SND_SOC_CLOCK_IN);
-		if (ret != 0) 
-			 return ret;
-	}
+	/* set cpu DAI configuration */
+	ret = snd_soc_dai_set_bclk_ratio(cpu_dai, 32 * 2);
+	if (ret != 0)
+		return ret;
 	
-	/* set cpu DAI configuration, using external bclk */
 	ret = snd_soc_dai_set_fmt(cpu_dai,
 		SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM);
 	if (ret != 0)
 		return ret;
 	
-	/* set codec DAI configuration */
 	for (i = 0; i < num_codecs; i++) {
+		/* set codecs sysclk */
+		ret = snd_soc_dai_set_sysclk(codec_dais[i],
+			WM8741_SYSCLK, mclk_freq, SND_SOC_CLOCK_IN);
+		if (ret != 0)
+			 return ret;
+
+		/* set codec DAI configuration */
 		ret = snd_soc_dai_set_fmt(codec_dais[i],
 			SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS);
 		if (ret != 0)
