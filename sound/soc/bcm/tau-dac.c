@@ -90,31 +90,10 @@ static void tau_dac_unprepare_i2s_clk(struct snd_soc_card_drvdata *drvdata)
 		clk_unprepare(drvdata->i2s_clk[i]);
 }
 
-static int tau_dac_enable_i2s_clk(struct snd_soc_card_drvdata *drvdata)
-{
-	int ret, i;
-
-	for (i = 0; i < MAX_I2S_CLOCKS; i++) {
-		ret = clk_enable(drvdata->i2s_clk[i]);
-		if (ret != 0)
-			return ret;
-	}
-
-	return 0;
-}
-
-static void tau_dac_disable_i2s_clk(struct snd_soc_card_drvdata *drvdata)
-{
-	int i;
-
-	for (i = 0; i < MAX_I2S_CLOCKS; i++)
-		clk_disable(drvdata->i2s_clk[i]);
-}
-
-static int tau_dac_set_i2s_clk(struct snd_soc_card_drvdata *drvdata,
+static int tau_dac_enable_i2s_clk(struct snd_soc_card_drvdata *drvdata,
 		unsigned long lrclk_rate, unsigned long bclk_rate)
 {
-	int ret;
+	int ret, i;
 
 	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_CPU], lrclk_rate);
 	if (ret != 0)
@@ -140,7 +119,21 @@ static int tau_dac_set_i2s_clk(struct snd_soc_card_drvdata *drvdata,
 	if (ret != 0)
 		return ret;
 
+	for (i = 0; i < MAX_I2S_CLOCKS; i++) {
+		ret = clk_enable(drvdata->i2s_clk[i]);
+		if (ret != 0)
+			return ret;
+	}
+
 	return 0;
+}
+
+static void tau_dac_disable_i2s_clk(struct snd_soc_card_drvdata *drvdata)
+{
+	int i;
+
+	for (i = 0; i < MAX_I2S_CLOCKS; i++)
+		clk_disable(drvdata->i2s_clk[i]);
 }
 
 /*
@@ -228,6 +221,7 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 		mclk_freq = 24576000;
 		break;
 	default:
+		dev_err(soc_card->dev, "Rate not supported: %d", rate);
 		return -EINVAL;
 	}
 
@@ -255,15 +249,19 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 			return ret;
 	}
 
-	// TODO: set lrclk, bclk rates
+	/* enable clocks*/
 	bclk_freq = rate * width;
 	lrclk_freq = rate;
-	tau_dac_set_i2s_clk(drvdata, bclk_freq, lrclk_freq);
 
 	tau_dac_enable_mclk(drvdata, mclk_freq);
-	tau_dac_enable_i2s_clk(drvdata);
 
-	return ret;
+	ret = tau_dac_enable_i2s_clk(drvdata, bclk_freq, lrclk_freq);
+	if (ret != 0) {
+		dev_err(soc_card->dev, "Starting I2S clocks failed: %d\n", ret);
+		return ret;
+	}
+
+	return 0;
 }
 
 static struct snd_soc_ops tau_dac_ops = {
