@@ -20,18 +20,31 @@
 	fragment@1 {
 		target-path = "/clocks";
 		__overlay__ {
-		
-			osc22: osc@22.5792M {
+
+			xtal_ref: xtal_ref {
+				compatible = "fixed-clock";
+				#clock-cells = <0>;
+				clock-frequency = <0>; /* not mounted */
+			};
+			
+			clkin_ref: clkin_ref {
+				compatible = "fixed-clock";
+				#clock-cells = <0>;
+				clock-frequency = <0>; /* frequency is set at runtime */
+			};
+/*
+			osc22: osc22579200 {
 				compatible = "fixed-clock";
 				#clock-cells = <0>;
 				clock-frequency = <22579200>;
 			};
-			
-			osc24: osc@24.576M {
+
+			osc24: osc24576000 {
 				compatible = "fixed-clock";
 				#clock-cells = <0>;
 				clock-frequency = <24576000>;
 			};
+*/
 		};
 	};
 	
@@ -64,8 +77,8 @@
 				#clock-cells = <1>;
 				compatible = "silabs,si5351c";
 				reg = <0x60>;
-				clocks = <&osc22 0>, <&osc24 0>;
-				clock-names = "22.5792M", "24.576M";
+				clocks = <&xtal_ref>, <&clkin_ref>;
+				clock-names = "xtal", "clkin";
 				status = "okay";
 
 				clkout0 {
@@ -129,10 +142,20 @@
 			gpio-mclk-sel = <&gpio 22 0>;
 			gpio-mclk-ena = <&gpio 27 0>;
 
-			clocks = <&si5351 0>, <&si5351 2>, <&si5351 6>,
-			         <&si5351 7>, <&si5351 3>, <&si5351 5>;
-			clock-names = "lrclk-cpu", "lrclk-dacl", "lrclk-dacr",
-			              "bclk-cpu",  "bclk-dacl",  "bclk-dacr";
+			clocks      = <&clkin_ref>,
+			              <&si5351 7>, 
+			              <&si5351 3>, 
+			              <&si5351 5>,
+			              <&si5351 0>,
+			              <&si5351 2>, 
+			              <&si5351 6>;
+			clock-names = "mclk",
+			              "bclk-cpu",  
+			              "bclk-dacl",  
+			              "bclk-dacr",
+			              "lrclk-cpu", 
+			              "lrclk-dacl", 
+			              "lrclk-dacr";
 
 			codecs = <&wm8741_left>, <&wm8741_right>;
 			status = "okay";

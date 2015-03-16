@@ -28,12 +28,13 @@
 #include "../codecs/wm8741.h"
 
 enum {
-	LRCLK_CPU,
-	LRCLK_DACL,
-	LRCLK_DACR,
+	MCLK,
 	BCLK_CPU,
 	BCLK_DACL,
 	BCLK_DACR,
+	LRCLK_CPU,
+	LRCLK_DACL,
+	LRCLK_DACR,
 	MAX_I2S_CLOCKS
 };
 
@@ -43,7 +44,7 @@ struct snd_soc_card_drvdata {
 	struct clk *i2s_clk[MAX_I2S_CLOCKS];
 };
 
-static void tau_dac_enable_mclk(struct snd_soc_card_drvdata *drvdata,
+static int tau_dac_enable_mclk(struct snd_soc_card_drvdata *drvdata,
 		unsigned int freq)
 {
 	int index;
@@ -56,12 +57,19 @@ static void tau_dac_enable_mclk(struct snd_soc_card_drvdata *drvdata,
 		index = 1;
 		break;
 	default:
-		return;
+		return -EINVAL;
 	}
-
+	
+	/* WTF???
+	clk_set_rate(drvdata->i2s_clk[MCLK], freq);
+	clk_set_parent(drvdata->i2s_clk[BCLK_CPU], drvdata->i2s_clk[MCLK]);
+	*/
+	
 	gpio_set_value(drvdata->gpio_mclk_sel, index);
 	gpio_set_value(drvdata->gpio_mclk_ena, 1);
 	// TODO: msleep(20);
+	
+	return 0;
 }
 
 static void tau_dac_disable_mclk(struct snd_soc_card_drvdata *drvdata)
@@ -119,11 +127,13 @@ static int tau_dac_enable_i2s_clk(struct snd_soc_card_drvdata *drvdata,
 	if (ret != 0)
 		return ret;
 
+	/* NOT used in si5351 ???
 	for (i = 0; i < MAX_I2S_CLOCKS; i++) {
 		ret = clk_enable(drvdata->i2s_clk[i]);
 		if (ret != 0)
 			return ret;
 	}
+	*/
 
 	return 0;
 }
@@ -379,6 +389,10 @@ static int tau_dac_set_gpios(struct device *dev,
 static int tau_dac_set_clocks(struct device *dev,
 		struct snd_soc_card_drvdata *drvdata)
 {
+	drvdata->i2s_clk[MCLK] = devm_clk_get(dev, "mclk");
+	if (IS_ERR(drvdata->i2s_clk[MCLK]))
+		return -EINVAL;
+
 	drvdata->i2s_clk[LRCLK_CPU] = devm_clk_get(dev, "lrclk-cpu");
 	if (IS_ERR(drvdata->i2s_clk[LRCLK_CPU]))
 		return -EINVAL;
