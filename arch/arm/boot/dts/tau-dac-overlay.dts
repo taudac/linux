@@ -21,30 +21,37 @@
 		target-path = "/clocks";
 		__overlay__ {
 
-			xtal_ref: xtal_ref {
+			xtal: xtal {
 				compatible = "fixed-clock";
 				#clock-cells = <0>;
 				clock-frequency = <0>; /* not mounted */
 			};
-			
-			clkin_ref: clkin_ref {
-				compatible = "fixed-clock";
-				#clock-cells = <0>;
-				clock-frequency = <0>; /* frequency is set at runtime */
-			};
-/*
-			osc22: osc22579200 {
+
+			osc22: osc22 {
 				compatible = "fixed-clock";
 				#clock-cells = <0>;
 				clock-frequency = <22579200>;
 			};
 
-			osc24: osc24576000 {
+			osc24: osc24 {
 				compatible = "fixed-clock";
 				#clock-cells = <0>;
 				clock-frequency = <24576000>;
 			};
-*/
+			
+			mux: multiplexer {
+				compatible = "gpio-mux-clock";
+				clocks = <&osc22>, <&osc24>;
+				#clock-cells = <0>;
+				select-gpios = <&gpio 22 0>;
+			};
+
+			mclk: clkgate {
+				compatible = "gpio-gate-clock";
+				clocks = <&mux>;
+				#clock-cells = <0>;
+				enable-gpios = <&gpio 27 0>;
+			};
 		};
 	};
 	
@@ -77,7 +84,7 @@
 				#clock-cells = <1>;
 				compatible = "silabs,si5351c";
 				reg = <0x60>;
-				clocks = <&xtal_ref>, <&clkin_ref>;
+				clocks = <&xtal>, <&mclk>;
 				clock-names = "xtal", "clkin";
 				status = "okay";
 
@@ -142,14 +149,16 @@
 			gpio-mclk-sel = <&gpio 22 0>;
 			gpio-mclk-ena = <&gpio 27 0>;
 
-			clocks      = <&clkin_ref>,
+			clocks      = <&osc24>,
+			              <&osc22>,
 			              <&si5351 7>, 
 			              <&si5351 3>, 
 			              <&si5351 5>,
 			              <&si5351 0>,
 			              <&si5351 2>, 
 			              <&si5351 6>;
-			clock-names = "mclk",
+			clock-names = "mclk24",
+			              "mclk22",
 			              "bclk-cpu",  
 			              "bclk-dacl",  
 			              "bclk-dacr",
