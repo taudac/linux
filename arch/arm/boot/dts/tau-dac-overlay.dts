@@ -20,17 +20,37 @@
 	fragment@1 {
 		target-path = "/clocks";
 		__overlay__ {
-		
-			osc22: osc@22.5792M {
+
+			xtal: xtal {
+				compatible = "fixed-clock";
+				#clock-cells = <0>;
+				clock-frequency = <0>; /* not mounted */
+			};
+
+			osc22: osc22 {
 				compatible = "fixed-clock";
 				#clock-cells = <0>;
 				clock-frequency = <22579200>;
 			};
-			
-			osc24: osc@24.576M {
+
+			osc24: osc24 {
 				compatible = "fixed-clock";
 				#clock-cells = <0>;
 				clock-frequency = <24576000>;
+			};
+			
+			mux: multiplexer {
+				compatible = "gpio-mux-clock";
+				clocks = <&osc22>, <&osc24>;
+				#clock-cells = <0>;
+				select-gpios = <&gpio 22 0>;
+			};
+
+			mclk: clkgate {
+				compatible = "gpio-gate-clock";
+				clocks = <&mux>;
+				#clock-cells = <0>;
+				enable-gpios = <&gpio 27 0>;
 			};
 		};
 	};
@@ -49,7 +69,7 @@
 				diff-mode = <1>;
 				status = "okay";
 			};
-			
+
 			wm8741_right: wm8741@1b {
 				#sound-dai-cells = <0>;
 				compatible = "wlf,wm8741";
@@ -57,17 +77,17 @@
 				diff-mode = <3>;
 				status = "okay";
 			};
-/*			
+
 			si5351: si5351c@60 {
 				#address-cells = <1>;
 				#size-cells = <0>;
 				#clock-cells = <1>;
 				compatible = "silabs,si5351c";
- 				reg = <0x60>;
- 				clocks = <&osc22 0>, <&osc24 0>;
- 				clock-names = "22.5792M", "24.576M";
- 				status = "okay";
- 				
+				reg = <0x60>;
+				clocks = <&xtal>, <&mclk>;
+				clock-names = "xtal", "clkin";
+				status = "okay";
+
 				clkout0 {
 					reg = <0>;
 					silabs,disable-state = <2>;
@@ -78,13 +98,42 @@
 					reg = <1>;
 					silabs,disable-state = <0>;
 				};
-				
+
+				clkout2 {
+					reg = <2>;
+					silabs,disable-state = <2>;
+					silabs,clock-source = <3>;
+				};
+
+				clkout3 {
+					reg = <3>;
+					silabs,disable-state = <2>;
+					silabs,clock-source = <3>;
+				};
+
 				clkout4 {
 					reg = <4>;
 					silabs,disable-state = <0>;
 				};
+
+				clkout5 {
+					reg = <5>;
+					silabs,disable-state = <2>;
+					silabs,clock-source = <3>;
+				};
+
+				clkout6 {
+					reg = <6>;
+					silabs,disable-state = <2>;
+					silabs,clock-source = <3>;
+				};
+
+				clkout7 {
+					reg = <7>;
+					silabs,disable-state = <2>;
+					silabs,clock-source = <3>;
+				};
 			};
-*/			
 		};
 	};
 
@@ -99,12 +148,24 @@
 			pinctrl-0 = <&tau_dac_pins>;
 			gpio-mclk-sel = <&gpio 22 0>;
 			gpio-mclk-ena = <&gpio 27 0>;
-/*			
-			clocks = <&si5351 0>, <&si5351 2>, <&si5351 6>,
-			         <&si5351 7>, <&si5351 3>, <&si5351 5>;
-			clock-names = "lrclk-cpu", "lrclk-dacl", "lrclk-dacr",
-			              "bclk-cpu",  "bclk-dacl",  "bclk-dacr";
-*/			              
+
+			clocks      = <&osc24>,
+			              <&osc22>,
+			              <&si5351 7>, 
+			              <&si5351 3>, 
+			              <&si5351 5>,
+			              <&si5351 0>,
+			              <&si5351 2>, 
+			              <&si5351 6>;
+			clock-names = "mclk24",
+			              "mclk22",
+			              "bclk-cpu",  
+			              "bclk-dacl",  
+			              "bclk-dacr",
+			              "lrclk-cpu", 
+			              "lrclk-dacl", 
+			              "lrclk-dacr";
+
 			codecs = <&wm8741_left>, <&wm8741_right>;
 			status = "okay";
 		};

@@ -27,36 +27,136 @@
 
 #include "../codecs/wm8741.h"
 
+enum {
+	MCLK24,
+	MCLK22,
+	BCLK_CPU,
+	BCLK_DACL,
+	BCLK_DACR,
+	LRCLK_CPU,
+	LRCLK_DACL,
+	LRCLK_DACR,
+	MAX_I2S_CLOCKS
+};
+
 struct snd_soc_card_drvdata {
 	unsigned gpio_mclk_sel;
 	unsigned gpio_mclk_ena;
-	struct clk* lrclk_cpu;
-	struct clk* lrclk_dacl;
-	struct clk* lrclk_dacr;
-	struct clk* bclk_cpu;
-	struct clk* bclk_dacl;
-	struct clk* bclk_dacr;
+	struct clk *i2s_clk[MAX_I2S_CLOCKS];
 };
 
-static void tau_dac_enable_mclk(struct snd_soc_card_drvdata* drvdata,
+static int tau_dac_enable_mclk(struct snd_soc_card_drvdata *drvdata,
 		unsigned int freq)
 {
 	int index;
 
 	switch (freq) {
-	case 22579200: index = 0; break;
-	case 24576000: index = 1; break;
-	default: return;
+	case 22579200:
+		index = 0;
+		break;
+	case 24576000:
+		index = 1;
+		break;
+	default:
+		return -EINVAL;
 	}
+	
+	/* WTF???
+	ret = clk_set_rate(drvdata->i2s_clk[MCLK], freq);
+	if (ret != 0)
+		printk(KERN_DBG "clk_set_rate failed %d", ret);
+	
+	
+	//clk_set_parent(drvdata->i2s_clk[BCLK_CPU], drvdata->i2s_clk[MCLK]);
+	*/
+	
+	/*----------------
+	struct si5351_platform_data *pdata;
+	clk_set_rate(pdata->clk_clkin, 123456);
+	*/
 
 	gpio_set_value(drvdata->gpio_mclk_sel, index);
 	gpio_set_value(drvdata->gpio_mclk_ena, 1);
 	// TODO: msleep(20);
+	
+	return 0;
 }
 
-static void tau_dac_disable_mclk(struct snd_soc_card_drvdata* drvdata)
+static void tau_dac_disable_mclk(struct snd_soc_card_drvdata *drvdata)
 {
 	gpio_set_value(drvdata->gpio_mclk_ena, 0);
+}
+
+static int tau_dac_prepare_i2s_clk(struct snd_soc_card_drvdata *drvdata)
+{
+	int ret, i;
+	
+	// DEBUG
+	return 0;
+
+	for (i = 0; i < MAX_I2S_CLOCKS; i++) {
+		ret = clk_prepare(drvdata->i2s_clk[i]);
+		if (ret != 0)
+			return ret;
+	}
+
+	return 0;
+}
+
+static void tau_dac_unprepare_i2s_clk(struct snd_soc_card_drvdata *drvdata)
+{
+	int i;
+
+	for (i = 0; i < MAX_I2S_CLOCKS; i++)
+		clk_unprepare(drvdata->i2s_clk[i]);
+}
+
+static int tau_dac_enable_i2s_clk(struct snd_soc_card_drvdata *drvdata,
+		unsigned long lrclk_rate, unsigned long bclk_rate)
+{
+	int ret, i;
+
+	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_CPU], lrclk_rate);
+	if (ret != 0)
+		return ret;
+
+	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_DACL], lrclk_rate);
+	if (ret != 0)
+		return ret;
+
+	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_DACR], lrclk_rate);
+	if (ret != 0)
+		return ret;
+
+	ret = clk_set_rate(drvdata->i2s_clk[BCLK_CPU], bclk_rate);
+	if (ret != 0)
+		return ret;
+
+	ret = clk_set_rate(drvdata->i2s_clk[BCLK_DACL], bclk_rate);
+	if (ret != 0)
+		return ret;
+
+	ret = clk_set_rate(drvdata->i2s_clk[BCLK_DACR], bclk_rate);
+	if (ret != 0)
+		return ret;
+
+	/* NOT used in si5351 ???
+	for (i = 0; i < MAX_I2S_CLOCKS; i++) {
+		ret = clk_enable(drvdata->i2s_clk[i]);
+		if (ret != 0)
+			return ret;
+	}
+	*/
+
+	return 0;
+}
+
+static void tau_dac_disable_i2s_clk(struct snd_soc_card_drvdata *drvdata)
+{
+	int i;
+
+	for (i = 0; i < MAX_I2S_CLOCKS; i++)
+		clk_disable(drvdata->i2s_clk[i]);
 }
 
 /*
@@ -81,11 +181,13 @@ static int tau_dac_init(struct snd_soc_pcm_runtime *rtd)
 	int ret = 0, i;
 	int num_codecs = rtd->num_codecs;
 	struct snd_soc_dai **codec_dais = rtd->codec_dais;
+	
+	// DEBUG
+	struct snd_soc_card_drvdata *drvdata = 
+			snd_soc_card_get_drvdata(rtd->card);
 
-	//unsigned int mclk_freq = 22579200;
-	unsigned int mclk_freq = 24576000;
-
-	dev_err(rtd->card->dev, __FUNCTION__);
+	unsigned int mclk_freq = 22579200;
+	//unsigned int mclk_freq = 24576000;
 
 	/*  HACK: Due to the codec driver implementation, we have to call
 	 *  set_sysclk here. However, we don't yet know which clock to set.
@@ -97,10 +199,40 @@ static int tau_dac_init(struct snd_soc_pcm_runtime *rtd)
 	for (i = 0; i < num_codecs; i++) {
 		/* set codecs sysclk */
 		ret = snd_soc_dai_set_sysclk(codec_dais[i],
-			WM8741_SYSCLK, mclk_freq, SND_SOC_CLOCK_IN);
+				WM8741_SYSCLK, mclk_freq, SND_SOC_CLOCK_IN);
 		if (ret != 0)
 			 return ret;
 	}
+	
+	struct clk *clkin = clk_get_parent(drvdata->i2s_clk[BCLK_CPU]);
+	struct clk *clkinp = clk_get_parent(clkin);
+	
+	// DEBUG
+	printk(KERN_DEBUG "osc22  = %p\n", drvdata->i2s_clk[MCLK22]);
+	printk(KERN_DEBUG "osc24  = %p\n", drvdata->i2s_clk[MCLK24]);
+//	printk(KERN_DEBUG "bclk   = %p\n", drvdata->i2s_clk[BCLK_CPU]);
+//	printk(KERN_DEBUG "clkin  = %p\n", clkin);
+	printk(KERN_DEBUG "clkinp = %p\n", clkinp);
+	
+	
+	//tau_dac_disable_i2s_clk(drvdata);
+	//tau_dac_unprepare_i2s_clk(drvdata);
+	
+	
+	
+	ret = clk_set_parent(clkin, drvdata->i2s_clk[MCLK24]);
+	if (ret != 0)
+		printk(KERN_DEBUG "clk_set_parent failed: %d\n", ret);
+	clkinp = clk_get_parent(clkin);
+	printk(KERN_DEBUG "~~~~~~\n");
+	printk(KERN_DEBUG "clkinp = %p\n", clkinp);
+	
+	ret = clk_set_parent(clkin, drvdata->i2s_clk[MCLK22]);
+	if (ret != 0)
+		printk(KERN_DEBUG "clk_set_parent failed again: %d\n", ret);
+	else
+		printk(KERN_DEBUG "clk_set_parent succeded: %d\n", ret);
+
 
 	return ret;
 }
@@ -116,6 +248,7 @@ static void tau_dac_shutdown(struct snd_pcm_substream *substream)
 	struct snd_soc_card *soc_card = rtd->card;
 	struct snd_soc_card_drvdata *drvdata = snd_soc_card_get_drvdata(soc_card);
 
+	tau_dac_disable_i2s_clk(drvdata);
 	tau_dac_disable_mclk(drvdata);
 }
 
@@ -130,10 +263,10 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_dai **codec_dais = rtd->codec_dais;
 	int num_codecs = rtd->num_codecs;
 
-	unsigned int mclk_freq;	
+	unsigned int mclk_freq, bclk_freq, lrclk_freq;
 	unsigned int rate = params_rate(params);
 	int width = params_width(params);
-	
+
 	switch (rate) {
 	case 44100:
 	case 88200:
@@ -147,23 +280,24 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 		mclk_freq = 24576000;
 		break;
 	default:
+		dev_err(soc_card->dev, "Rate not supported: %d", rate);
 		return -EINVAL;
 	}
-	
+
 	/* set cpu DAI configuration */
 	ret = snd_soc_dai_set_bclk_ratio(cpu_dai, 32 * 2);
 	if (ret != 0)
 		return ret;
-	
+
 	ret = snd_soc_dai_set_fmt(cpu_dai,
 		SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM);
 	if (ret != 0)
 		return ret;
-	
+
 	for (i = 0; i < num_codecs; i++) {
 		/* set codecs sysclk */
 		ret = snd_soc_dai_set_sysclk(codec_dais[i],
-			WM8741_SYSCLK, mclk_freq, SND_SOC_CLOCK_IN);
+				WM8741_SYSCLK, mclk_freq, SND_SOC_CLOCK_IN);
 		if (ret != 0)
 			 return ret;
 
@@ -174,9 +308,19 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 			return ret;
 	}
 
-	// TODO: enable mclk, lrclk, bclk
+	/* enable clocks*/
+	bclk_freq = rate * width;
+	lrclk_freq = rate;
+
 	tau_dac_enable_mclk(drvdata, mclk_freq);
-	return ret;
+
+	ret = tau_dac_enable_i2s_clk(drvdata, bclk_freq, lrclk_freq);
+	if (ret != 0) {
+		dev_err(soc_card->dev, "Starting I2S clocks failed: %d\n", ret);
+		return ret;
+	}
+
+	return 0;
 }
 
 static struct snd_soc_ops tau_dac_ops = {
@@ -194,8 +338,8 @@ static struct snd_soc_dai_link tau_dac_dai[] = {
 		.codecs        = tau_dac_codecs,
 		.num_codecs    = ARRAY_SIZE(tau_dac_codecs),
 		.dai_fmt       = SND_SOC_DAIFMT_I2S |
-		                 SND_SOC_DAIFMT_NB_NF |
-		                 SND_SOC_DAIFMT_CBS_CFS,
+				 SND_SOC_DAIFMT_NB_NF |
+				 SND_SOC_DAIFMT_CBS_CFS,
 		.playback_only = true,
 		.ops  = &tau_dac_ops,
 		.init = tau_dac_init,
@@ -242,15 +386,15 @@ static int tau_dac_set_dai(struct device_node *np)
 		dai->codecs[i].name = NULL;
 		dai->codecs[i].of_node = i2c_nodes[i];
 	}
-		
+
 //	if (snd_soc_of_parse_card_name(card, "atmel,model") != 0)
 //		dev_err(&pdev->dev, "snd_soc_of_parse_card_name() failed\n");
 
-    return 0;
+	return 0;
 }
 
 static int tau_dac_get_gpio_from_of(struct device_node *np,
-		const char* name, unsigned* gpio, int* flags)
+		const char *name, unsigned *gpio, int *flags)
 {
 	enum of_gpio_flags of_flags;
 	int of_gpio;
@@ -261,8 +405,8 @@ static int tau_dac_get_gpio_from_of(struct device_node *np,
 			return -EINVAL;
 
 		*gpio = of_gpio;
-		*flags = (of_flags & OF_GPIO_ACTIVE_LOW) ? GPIOF_OUT_INIT_LOW :
-				GPIOF_OUT_INIT_HIGH;
+		*flags = (of_flags & OF_GPIO_ACTIVE_LOW) ? GPIOF_OUT_INIT_HIGH :
+				GPIOF_OUT_INIT_LOW;
 
 		return 0;
 	}
@@ -294,28 +438,36 @@ static int tau_dac_set_gpios(struct device *dev,
 static int tau_dac_set_clocks(struct device *dev,
 		struct snd_soc_card_drvdata *drvdata)
 {
-	drvdata->lrclk_cpu = devm_clk_get(dev, "lrclk-cpu");
-	if (IS_ERR(drvdata->lrclk_cpu))
+	drvdata->i2s_clk[MCLK24] = devm_clk_get(dev, "mclk24");
+	if (IS_ERR(drvdata->i2s_clk[MCLK24]))
 		return -EINVAL;
 
-	drvdata->lrclk_dacl = devm_clk_get(dev, "lrclk-dacl");
-	if (IS_ERR(drvdata->lrclk_dacl))
+	drvdata->i2s_clk[MCLK22] = devm_clk_get(dev, "mclk22");
+	if (IS_ERR(drvdata->i2s_clk[MCLK22]))
+		return -EINVAL;
+		
+	drvdata->i2s_clk[LRCLK_CPU] = devm_clk_get(dev, "lrclk-cpu");
+	if (IS_ERR(drvdata->i2s_clk[LRCLK_CPU]))
 		return -EINVAL;
 
-	drvdata->lrclk_dacr = devm_clk_get(dev, "lrclk-dacr");
-	if (IS_ERR(drvdata->lrclk_dacr))
+	drvdata->i2s_clk[LRCLK_DACL] = devm_clk_get(dev, "lrclk-dacl");
+	if (IS_ERR(drvdata->i2s_clk[LRCLK_CPU]))
 		return -EINVAL;
 
-	drvdata->bclk_cpu = devm_clk_get(dev, "bclk-cpu");
-	if (IS_ERR(drvdata->bclk_cpu))
+	drvdata->i2s_clk[LRCLK_DACR] = devm_clk_get(dev, "lrclk-dacr");
+	if (IS_ERR(drvdata->i2s_clk[LRCLK_CPU]))
 		return -EINVAL;
 
-	drvdata->bclk_dacl = devm_clk_get(dev, "bclk-dacl");
-	if (IS_ERR(drvdata->bclk_dacl))
+	drvdata->i2s_clk[BCLK_CPU] = devm_clk_get(dev, "bclk-cpu");
+	if (IS_ERR(drvdata->i2s_clk[LRCLK_CPU]))
 		return -EINVAL;
 
-	drvdata->bclk_dacr = devm_clk_get(dev, "bclk-dacr");
-	if (IS_ERR(drvdata->bclk_dacr))
+	drvdata->i2s_clk[BCLK_DACL] = devm_clk_get(dev, "bclk-dacl");
+	if (IS_ERR(drvdata->i2s_clk[LRCLK_CPU]))
+		return -EINVAL;
+
+	drvdata->i2s_clk[BCLK_DACR] = devm_clk_get(dev, "bclk-dacr");
+	if (IS_ERR(drvdata->i2s_clk[LRCLK_CPU]))
 		return -EINVAL;
 
 	return 0;
@@ -354,12 +506,19 @@ static int tau_dac_probe(struct platform_device *pdev)
 	}
 
 	/* set clocks */
-//	ret = tau_dac_set_clocks(&pdev->dev, drvdata);
+	ret = tau_dac_set_clocks(&pdev->dev, drvdata);
 	if (ret != 0) {
 		dev_err(&pdev->dev, "Setting clocks failed: %d\n", ret);
 		return ret;
 	}
-	
+
+	/* prepare clocks */
+	ret = tau_dac_prepare_i2s_clk(drvdata);
+	if (ret != 0) {
+		dev_err(&pdev->dev, "Preparing clocks failed: %d\n", ret);
+		return ret;
+	}
+
 	/* register card */
 	snd_soc_card_set_drvdata(&tau_dac_card, drvdata);
 	ret = snd_soc_register_card(&tau_dac_card);
@@ -374,6 +533,11 @@ static int tau_dac_probe(struct platform_device *pdev)
 
 static int tau_dac_remove(struct platform_device *pdev)
 {
+	struct snd_soc_card_drvdata *drvdata = snd_soc_card_get_drvdata(&tau_dac_card);
+
+	/* unprepare clocks */
+	tau_dac_unprepare_i2s_clk(drvdata);
+
 	return snd_soc_unregister_card(&tau_dac_card);
 }
 
