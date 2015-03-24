@@ -126,7 +126,7 @@ static const struct snd_soc_dapm_route wm8741_dapm_routes[] = {
 };
 
 static const unsigned int rates_11289[] = {
-	44100, 88235,
+	44100, 88200,
 };
 
 static const struct snd_pcm_hw_constraint_list constraints_11289 = {
@@ -153,7 +153,7 @@ static const struct snd_pcm_hw_constraint_list constraints_16384 = {
 };
 
 static const unsigned int rates_16934[] = {
-	44100, 88235,
+	44100, 88200,
 };
 
 static const struct snd_pcm_hw_constraint_list constraints_16934 = {
@@ -171,7 +171,7 @@ static const struct snd_pcm_hw_constraint_list constraints_18432 = {
 };
 
 static const unsigned int rates_22579[] = {
-	44100, 88235, 1764000
+	44100, 88200, 176400
 };
 
 static const struct snd_pcm_hw_constraint_list constraints_22579 = {
@@ -189,7 +189,7 @@ static const struct snd_pcm_hw_constraint_list constraints_24576 = {
 };
 
 static const unsigned int rates_36864[] = {
-	48000, 96000, 19200
+	48000, 96000, 192000
 };
 
 static const struct snd_pcm_hw_constraint_list constraints_36864 = {
