@@ -75,8 +75,8 @@ static int tau_dac_enable_mclk(struct snd_soc_card_drvdata *drvdata,
 	clk_set_rate(pdata->clk_clkin, 123456);
 	*/
 
-	gpio_set_value(drvdata->gpio_mclk_sel, index);
-	gpio_set_value(drvdata->gpio_mclk_ena, 1);
+//	gpio_set_value(drvdata->gpio_mclk_sel, index);
+//	gpio_set_value(drvdata->gpio_mclk_ena, 1);
 	// TODO: msleep(20);
 	
 	return 0;
@@ -84,7 +84,7 @@ static int tau_dac_enable_mclk(struct snd_soc_card_drvdata *drvdata,
 
 static void tau_dac_disable_mclk(struct snd_soc_card_drvdata *drvdata)
 {
-	gpio_set_value(drvdata->gpio_mclk_ena, 0);
+//	gpio_set_value(drvdata->gpio_mclk_ena, 0);
 }
 
 static int tau_dac_prepare_i2s_clk(struct snd_soc_card_drvdata *drvdata)
@@ -114,7 +114,8 @@ static void tau_dac_unprepare_i2s_clk(struct snd_soc_card_drvdata *drvdata)
 static int tau_dac_enable_i2s_clk(struct snd_soc_card_drvdata *drvdata,
 		unsigned long lrclk_rate, unsigned long bclk_rate)
 {
-	int ret, i;
+	int ret;
+//	int i;
 
 	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_CPU], lrclk_rate);
 	if (ret != 0)
@@ -499,11 +500,11 @@ static int tau_dac_probe(struct platform_device *pdev)
 	}
 
 	/* set gpios */
-	ret = tau_dac_set_gpios(&pdev->dev, drvdata);
-	if (ret != 0) {
-		dev_err(&pdev->dev, "Setting gpios failed: %d\n", ret);
-		return ret;
-	}
+//	ret = tau_dac_set_gpios(&pdev->dev, drvdata);
+//	if (ret != 0) {
+//		dev_err(&pdev->dev, "Setting gpios failed: %d\n", ret);
+//		return ret;
+//	}
 
 	/* set clocks */
 	ret = tau_dac_set_clocks(&pdev->dev, drvdata);

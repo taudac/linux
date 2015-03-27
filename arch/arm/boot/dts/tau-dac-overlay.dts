@@ -9,7 +9,7 @@
 		target = <&gpio>;
 		__overlay__ {
 			
-			tau_dac_pins: tau_dac_pins {
+			mclk_pins: mclk_pins {
 				brcm,pins = <22 27>;
 				brcm,function = <1>;
 				brcm,pull = <0>;
@@ -39,16 +39,16 @@
 				clock-frequency = <24576000>;
 			};
 			
-			mux: multiplexer {
+			mclk_mux: mclk_mux {
 				compatible = "gpio-mux-clock";
 				clocks = <&osc22>, <&osc24>;
 				#clock-cells = <0>;
 				select-gpios = <&gpio 22 0>;
 			};
 
-			mclk: clkgate {
+			mclk_gate: mclk_gate {
 				compatible = "gpio-gate-clock";
-				clocks = <&mux>;
+				clocks = <&mclk_mux>;
 				#clock-cells = <0>;
 				enable-gpios = <&gpio 27 0>;
 			};
@@ -84,7 +84,7 @@
 				#clock-cells = <1>;
 				compatible = "silabs,si5351c";
 				reg = <0x60>;
-				clocks = <&xtal>, <&mclk>;
+				clocks = <&xtal>, <&mclk_gate>;
 				clock-names = "xtal", "clkin";
 				status = "okay";
 
@@ -144,21 +144,21 @@
 			tau-dac,card-name = "TauDAC V1.0";
 			i2s-controller = <&i2s>;
 			
-			pinctrl-names = "default";
-			pinctrl-0 = <&tau_dac_pins>;
-			gpio-mclk-sel = <&gpio 22 0>;
-			gpio-mclk-ena = <&gpio 27 0>;
+//			pinctrl-names = "default";
+//			pinctrl-0 = <&tau_dac_pins>;
+//			gpio-mclk-sel = <&gpio 22 0>;
+//			gpio-mclk-ena = <&gpio 27 0>;
 
-			clocks      = <&osc24>,
-			              <&osc22>,
+			clocks      = <&mclk_mux>,
+			              <&mclk_gate>,
 			              <&si5351 7>, 
 			              <&si5351 3>, 
 			              <&si5351 5>,
 			              <&si5351 0>,
 			              <&si5351 2>, 
 			              <&si5351 6>;
-			clock-names = "mclk24",
-			              "mclk22",
+			clock-names = "mclk-mux",
+			              "mclk-gate",
 			              "bclk-cpu",  
 			              "bclk-dacl",  
 			              "bclk-dacr",
