@@ -21,35 +21,29 @@
 		target-path = "/clocks";
 		__overlay__ {
 
-			xtal: xtal {
+			xtal: tau_xtal {
 				compatible = "fixed-clock";
 				#clock-cells = <0>;
 				clock-frequency = <0>; /* not mounted */
 			};
 
-			osc22: osc22 {
+			osc22: tau_osc22 {
 				compatible = "fixed-clock";
 				#clock-cells = <0>;
 				clock-frequency = <22579200>;
 			};
 
-			osc24: osc24 {
+			osc24: tau_osc24 {
 				compatible = "fixed-clock";
 				#clock-cells = <0>;
 				clock-frequency = <24576000>;
 			};
 			
-			mclk_mux: mclk_mux {
+			mux_mclk: tau_mux_mclk {
 				compatible = "gpio-mux-clock";
 				clocks = <&osc22>, <&osc24>;
 				#clock-cells = <0>;
 				select-gpios = <&gpio 22 0>;
-			};
-
-			mclk_gate: mclk_gate {
-				compatible = "gpio-gate-clock";
-				clocks = <&mclk_mux>;
-				#clock-cells = <0>;
 				enable-gpios = <&gpio 27 0>;
 			};
 		};
@@ -84,7 +78,7 @@
 				#clock-cells = <1>;
 				compatible = "silabs,si5351c";
 				reg = <0x60>;
-				clocks = <&xtal>, <&mclk_gate>;
+				clocks = <&xtal>, <&mux_mclk>;
 				clock-names = "xtal", "clkin";
 				status = "okay";
 
@@ -143,22 +137,19 @@
 			compatible = "singularity-audio,tau-dac";
 			tau-dac,card-name = "TauDAC V1.0";
 			i2s-controller = <&i2s>;
-			
-//			pinctrl-names = "default";
-//			pinctrl-0 = <&tau_dac_pins>;
-//			gpio-mclk-sel = <&gpio 22 0>;
-//			gpio-mclk-ena = <&gpio 27 0>;
 
-			clocks      = <&mclk_mux>,
-			              <&mclk_gate>,
+			clocks      = <&osc24>,
+					      <&osc22>,
+					      <&mux_mclk>,
 			              <&si5351 7>, 
 			              <&si5351 3>, 
 			              <&si5351 5>,
 			              <&si5351 0>,
 			              <&si5351 2>, 
 			              <&si5351 6>;
-			clock-names = "mclk-mux",
-			              "mclk-gate",
+			clock-names = "mclk-24M",
+					      "mclk-22M",
+					      "mux-mclk",
 			              "bclk-cpu",  
 			              "bclk-dacl",  
 			              "bclk-dacr",

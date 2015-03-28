@@ -84,8 +84,6 @@ struct clk *clk_register_gpio_mux(struct device *dev, const char *name,
 	unsigned long gpio_flags;
 	int err;
 
-	printk(KERN_DEBUG "%s - %d\n", __FUNCTION__, __LINE__);
-
 	if (gpiod_is_active_low(gpiod))
 		gpio_flags = GPIOF_OUT_INIT_HIGH;
 	else
@@ -111,11 +109,11 @@ struct clk *clk_register_gpio_mux(struct device *dev, const char *name,
 
 	if (!clk_gpio_mux) {
 		clk = ERR_PTR(-ENOMEM);
-		goto clk_register_gpio_gate_err;
+		goto cleanup;
 	}
 
 	init.name = name;
-	init.ops = &clk_gpio_gate_ops;
+	init.ops = &clk_gpio_mux_ops;
 	init.flags = flags | CLK_IS_BASIC;
 	init.parent_names = parent_names;
 	init.num_parents = num_parents;
@@ -131,7 +129,7 @@ struct clk *clk_register_gpio_mux(struct device *dev, const char *name,
 	if (!dev)
 		kfree(clk_gpio_mux);
 
-clk_register_gpio_gate_err:
+cleanup:
 	gpiod_put(gpiod);
 
 	return clk;
@@ -163,8 +161,6 @@ static struct clk *of_clk_gpio_mux_delayed_register_get(
 	int gpio;
 	u32 flags = 0;
 
-	printk(KERN_DEBUG "%s - %d\n", __FUNCTION__, __LINE__);
-
 	mutex_lock(&data->lock);
 
 	if (data->clk) {
@@ -178,22 +174,21 @@ static struct clk *of_clk_gpio_mux_delayed_register_get(
 		if (gpio != -EPROBE_DEFER)
 			pr_err("%s: %s: Can't get 'select-gpios' DT property\n",
 			       __func__, clk_name);
-		printk(KERN_DEBUG "%s - %d, gpio = %d\n", __FUNCTION__, __LINE__, gpio);
+		pr_warning("%s: %s: 'select-gpios' not yet ready, retry\n",
+			   __func__, clk_name);
 		return ERR_PTR(gpio);
 	}
 	gpiod = gpio_to_desc(gpio);
 
 	num_parents = of_clk_get_parent_count(data->node);
 	if (num_parents < 2) {
-		pr_err("mux-clock %s must have parents\n", data->node->name);
-		printk(KERN_DEBUG "%s - %d\n", __FUNCTION__, __LINE__);
+		pr_err("mux-clock %s must have 2 parents\n", data->node->name);
 		return clk;
 	}
 
 	parent_names = kzalloc((sizeof(char *) * num_parents), GFP_KERNEL);
 	if (!parent_names) {
 		kfree(parent_names);
-		printk(KERN_DEBUG "%s - %d\n", __FUNCTION__, __LINE__);
 		return clk;
 	}
 
@@ -204,14 +199,11 @@ static struct clk *of_clk_gpio_mux_delayed_register_get(
 			gpiod, flags);
 	if (IS_ERR(clk)) {
 		mutex_unlock(&data->lock);
-		printk(KERN_DEBUG "%s - %d\n", __FUNCTION__, __LINE__);
 		return clk;
 	}
 
 	data->clk = clk;
 	mutex_unlock(&data->lock);
-
-	printk(KERN_DEBUG "%s - %d\n", __FUNCTION__, __LINE__);
 
 	return clk;
 }
@@ -222,8 +214,6 @@ static struct clk *of_clk_gpio_mux_delayed_register_get(
 void __init of_gpio_mux_clk_setup(struct device_node *node)
 {
 	struct clk_gpio_mux_delayed_register_data *data;
-
-	printk(KERN_DEBUG "%s - %d\n", __FUNCTION__, __LINE__);
 
 	data = kzalloc(sizeof(struct clk_gpio_mux_delayed_register_data),
 		       GFP_KERNEL);

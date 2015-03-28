@@ -21,6 +21,7 @@
 #include <sound/soc.h>
 #include <sound/pcm_params.h>
 
+#include <linux/delay.h>
 #include <linux/of_gpio.h>
 #include <linux/i2c.h>
 #include <linux/clk.h>
@@ -28,73 +29,52 @@
 #include "../codecs/wm8741.h"
 
 enum {
-	MCLK24,
-	MCLK22,
 	BCLK_CPU,
 	BCLK_DACL,
 	BCLK_DACR,
 	LRCLK_CPU,
 	LRCLK_DACL,
 	LRCLK_DACR,
-	MAX_I2S_CLOCKS
+	NUM_I2S_CLOCKS
 };
 
 struct snd_soc_card_drvdata {
-	unsigned gpio_mclk_sel;
-	unsigned gpio_mclk_ena;
-	struct clk *i2s_clk[MAX_I2S_CLOCKS];
+	struct clk *mclk24;
+	struct clk *mclk22;
+	struct clk *mux_mclk;
+	struct clk *i2s_clk[NUM_I2S_CLOCKS];
 };
 
 static int tau_dac_enable_mclk(struct snd_soc_card_drvdata *drvdata,
 		unsigned int freq)
 {
-	int index;
-
 	switch (freq) {
 	case 22579200:
-		index = 0;
+		clk_set_parent(drvdata->mux_mclk, drvdata->mclk22);
 		break;
 	case 24576000:
-		index = 1;
+		clk_set_parent(drvdata->mux_mclk, drvdata->mclk24);
 		break;
 	default:
 		return -EINVAL;
 	}
-	
-	/* WTF???
-	ret = clk_set_rate(drvdata->i2s_clk[MCLK], freq);
-	if (ret != 0)
-		printk(KERN_DBG "clk_set_rate failed %d", ret);
-	
-	
-	//clk_set_parent(drvdata->i2s_clk[BCLK_CPU], drvdata->i2s_clk[MCLK]);
-	*/
-	
-	/*----------------
-	struct si5351_platform_data *pdata;
-	clk_set_rate(pdata->clk_clkin, 123456);
-	*/
 
-//	gpio_set_value(drvdata->gpio_mclk_sel, index);
-//	gpio_set_value(drvdata->gpio_mclk_ena, 1);
-	// TODO: msleep(20);
+	clk_enable(drvdata->mux_mclk);
+	msleep(2);
 	
 	return 0;
 }
 
 static void tau_dac_disable_mclk(struct snd_soc_card_drvdata *drvdata)
 {
-//	gpio_set_value(drvdata->gpio_mclk_ena, 0);
+	clk_disable(drvdata->mux_mclk);
 }
 
 static int tau_dac_prepare_i2s_clk(struct snd_soc_card_drvdata *drvdata)
 {
 	int ret, i;
-	
-	// DEBUG
-	return 0;
 
-	for (i = 0; i < MAX_I2S_CLOCKS; i++) {
+	for (i = 0; i < NUM_I2S_CLOCKS; i++) {
 		ret = clk_prepare(drvdata->i2s_clk[i]);
 		if (ret != 0)
 			return ret;
@@ -107,7 +87,7 @@ static void tau_dac_unprepare_i2s_clk(struct snd_soc_card_drvdata *drvdata)
 {
 	int i;
 
-	for (i = 0; i < MAX_I2S_CLOCKS; i++)
+	for (i = 0; i < NUM_I2S_CLOCKS; i++)
 		clk_unprepare(drvdata->i2s_clk[i]);
 }
 
@@ -154,10 +134,10 @@ static int tau_dac_enable_i2s_clk(struct snd_soc_card_drvdata *drvdata,
 
 static void tau_dac_disable_i2s_clk(struct snd_soc_card_drvdata *drvdata)
 {
-	int i;
-
-	for (i = 0; i < MAX_I2S_CLOCKS; i++)
-		clk_disable(drvdata->i2s_clk[i]);
+//	int i;
+//
+//	for (i = 0; i < NUM_I2S_CLOCKS; i++)
+//		clk_disable(drvdata->i2s_clk[i]);
 }
 
 /*
@@ -179,16 +159,12 @@ static struct snd_soc_dai_link_component tau_dac_codecs[] = {
  */
 static int tau_dac_init(struct snd_soc_pcm_runtime *rtd)
 {
-	int ret = 0, i;
+	int ret, i;
 	int num_codecs = rtd->num_codecs;
 	struct snd_soc_dai **codec_dais = rtd->codec_dais;
-	
-	// DEBUG
-	struct snd_soc_card_drvdata *drvdata = 
-			snd_soc_card_get_drvdata(rtd->card);
 
-	unsigned int mclk_freq = 22579200;
-	//unsigned int mclk_freq = 24576000;
+	//unsigned int mclk_freq = 22579200;
+	unsigned int mclk_freq = 24576000;
 
 	/*  HACK: Due to the codec driver implementation, we have to call
 	 *  set_sysclk here. However, we don't yet know which clock to set.
@@ -204,38 +180,8 @@ static int tau_dac_init(struct snd_soc_pcm_runtime *rtd)
 		if (ret != 0)
 			 return ret;
 	}
-	
-	struct clk *clkin = clk_get_parent(drvdata->i2s_clk[BCLK_CPU]);
-	struct clk *clkinp = clk_get_parent(clkin);
-	
-	// DEBUG
-	printk(KERN_DEBUG "osc22  = %p\n", drvdata->i2s_clk[MCLK22]);
-	printk(KERN_DEBUG "osc24  = %p\n", drvdata->i2s_clk[MCLK24]);
-//	printk(KERN_DEBUG "bclk   = %p\n", drvdata->i2s_clk[BCLK_CPU]);
-//	printk(KERN_DEBUG "clkin  = %p\n", clkin);
-	printk(KERN_DEBUG "clkinp = %p\n", clkinp);
-	
-	
-	//tau_dac_disable_i2s_clk(drvdata);
-	//tau_dac_unprepare_i2s_clk(drvdata);
-	
-	
-	
-	ret = clk_set_parent(clkin, drvdata->i2s_clk[MCLK24]);
-	if (ret != 0)
-		printk(KERN_DEBUG "clk_set_parent failed: %d\n", ret);
-	clkinp = clk_get_parent(clkin);
-	printk(KERN_DEBUG "~~~~~~\n");
-	printk(KERN_DEBUG "clkinp = %p\n", clkinp);
-	
-	ret = clk_set_parent(clkin, drvdata->i2s_clk[MCLK22]);
-	if (ret != 0)
-		printk(KERN_DEBUG "clk_set_parent failed again: %d\n", ret);
-	else
-		printk(KERN_DEBUG "clk_set_parent succeded: %d\n", ret);
 
-
-	return ret;
+	return 0;
 }
 
 static int tau_dac_startup(struct snd_pcm_substream *substream)
@@ -394,57 +340,19 @@ static int tau_dac_set_dai(struct device_node *np)
 	return 0;
 }
 
-static int tau_dac_get_gpio_from_of(struct device_node *np,
-		const char *name, unsigned *gpio, int *flags)
-{
-	enum of_gpio_flags of_flags;
-	int of_gpio;
-
-	if (of_find_property(np, name, NULL)) {
-		of_gpio = of_get_named_gpio_flags(np, name, 0, &of_flags);
-		if (!gpio_is_valid(of_gpio))
-			return -EINVAL;
-
-		*gpio = of_gpio;
-		*flags = (of_flags & OF_GPIO_ACTIVE_LOW) ? GPIOF_OUT_INIT_HIGH :
-				GPIOF_OUT_INIT_LOW;
-
-		return 0;
-	}
-
-	return -EINVAL;
-}
-
-static int tau_dac_set_gpios(struct device *dev,
-		struct snd_soc_card_drvdata *drvdata)
-{
-	int ret = 0;
-	int flags;
-
-	ret |= tau_dac_get_gpio_from_of(dev->of_node, "gpio-mclk-sel",
-			&drvdata->gpio_mclk_sel, &flags);
-
-	ret |= devm_gpio_request_one(dev, drvdata->gpio_mclk_sel, flags,
-			"tau-dac_mclk-sel");
-
-	ret |= tau_dac_get_gpio_from_of(dev->of_node, "gpio-mclk-ena",
-				&drvdata->gpio_mclk_ena, &flags);
-
-	ret |= devm_gpio_request_one(dev, drvdata->gpio_mclk_ena, flags,
-			"tau-dac_mclk-ena");
-
-	return ret;
-}
-
 static int tau_dac_set_clocks(struct device *dev,
 		struct snd_soc_card_drvdata *drvdata)
 {
-	drvdata->i2s_clk[MCLK24] = devm_clk_get(dev, "mclk24");
-	if (IS_ERR(drvdata->i2s_clk[MCLK24]))
+	drvdata->mclk24 = devm_clk_get(dev, "mclk-24M");
+	if (IS_ERR(drvdata->mclk24))
 		return -EINVAL;
 
-	drvdata->i2s_clk[MCLK22] = devm_clk_get(dev, "mclk22");
-	if (IS_ERR(drvdata->i2s_clk[MCLK22]))
+	drvdata->mclk22 = devm_clk_get(dev, "mclk-22M");
+	if (IS_ERR(drvdata->mclk22))
+		return -EINVAL;
+
+	drvdata->mux_mclk = devm_clk_get(dev, "mux-mclk");
+	if (IS_ERR(drvdata->mux_mclk))
 		return -EINVAL;
 		
 	drvdata->i2s_clk[LRCLK_CPU] = devm_clk_get(dev, "lrclk-cpu");
@@ -498,13 +406,6 @@ static int tau_dac_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Setting dai failed: %d\n", ret);
 		return ret;
 	}
-
-	/* set gpios */
-//	ret = tau_dac_set_gpios(&pdev->dev, drvdata);
-//	if (ret != 0) {
-//		dev_err(&pdev->dev, "Setting gpios failed: %d\n", ret);
-//		return ret;
-//	}
 
 	/* set clocks */
 	ret = tau_dac_set_clocks(&pdev->dev, drvdata);
