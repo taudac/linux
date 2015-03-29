@@ -134,9 +134,10 @@
 	fragment@3 {
 		target = <&sound>;
 		__overlay__ {
-			compatible = "singularity-audio,tau-dac";
-			tau-dac,card-name = "TauDAC V1.0";
-			i2s-controller = <&i2s>;
+			compatible = "tau-dac,tau-dac-1";
+			tau-dac,model = "TauDAC-v1r0";
+			tau-dac,i2s-controller = <&i2s>;
+			tau-dac,codecs = <&wm8741_left>, <&wm8741_right>;
 
 			clocks      = <&osc24>,
 					      <&osc22>,
@@ -156,8 +157,7 @@
 			              "lrclk-cpu", 
 			              "lrclk-dacl", 
 			              "lrclk-dacr";
-
-			codecs = <&wm8741_left>, <&wm8741_right>;
+			
 			status = "okay";
 		};
 	};

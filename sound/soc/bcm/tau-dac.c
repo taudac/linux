@@ -263,7 +263,7 @@ static struct snd_soc_ops tau_dac_ops = {
 
 static struct snd_soc_dai_link tau_dac_dai[] = {
 	{
-		.name          = "TauDAC",
+		.name          = "TauDAC I2S",
 		.stream_name   = "TauDAC HiFi",
 		.cpu_dai_name  = "bcm2708-i2s.0",
 		.platform_name = "bcm2708-i2s.0",
@@ -282,7 +282,7 @@ static struct snd_soc_dai_link tau_dac_dai[] = {
  * asoc machine driver
  */
 static struct snd_soc_card tau_dac_card = {
-	.name       = "tau_dac",
+	.name       = "TauDAC",
 	.dai_link   = tau_dac_dai,
 	.num_links  = ARRAY_SIZE(tau_dac_dai),
 };
@@ -299,7 +299,7 @@ static int tau_dac_set_dai(struct device_node *np)
 	struct snd_soc_dai_link *dai = &tau_dac_dai[0];
 
 	/* dais */
-	i2s_node = of_parse_phandle(np, "i2s-controller", 0);
+	i2s_node = of_parse_phandle(np, "tau-dac,i2s-controller", 0);
 
 	if (i2s_node == NULL)
 		return -EINVAL;
@@ -310,7 +310,7 @@ static int tau_dac_set_dai(struct device_node *np)
 	dai->platform_of_node = i2s_node;
 
 	for (i = 0; i < ARRAY_SIZE(i2c_nodes); i++) {
-		i2c_nodes[i] = of_parse_phandle(np, "codecs", i);
+		i2c_nodes[i] = of_parse_phandle(np, "tau-dac,codecs", i);
 
 		if (i2c_nodes[i] == NULL)
 			return -EINVAL;
@@ -318,9 +318,6 @@ static int tau_dac_set_dai(struct device_node *np)
 		dai->codecs[i].name = NULL;
 		dai->codecs[i].of_node = i2c_nodes[i];
 	}
-
-//	if (snd_soc_of_parse_card_name(card, "atmel,model") != 0)
-//		dev_err(&pdev->dev, "snd_soc_of_parse_card_name() failed\n");
 
 	return 0;
 }
@@ -409,6 +406,7 @@ static int tau_dac_probe(struct platform_device *pdev)
 
 	/* register card */
 	snd_soc_card_set_drvdata(&tau_dac_card, drvdata);
+	snd_soc_of_parse_card_name(&tau_dac_card, "tau-dac,model");
 	ret = snd_soc_register_card(&tau_dac_card);
 	if (ret != 0) {
 		if (ret != -EPROBE_DEFER)
@@ -431,14 +429,14 @@ static int tau_dac_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id tau_dac_of_match[] = {
-	{ .compatible = "singularity-audio,tau-dac", },
+	{ .compatible = "tau-dac,tau-dac-1", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, tau_dac_of_match);
 
 static struct platform_driver tau_dac_driver = {
 	.driver = {
-		.name  = "snd-tau-dac",
+		.name  = "snd-soc-tau-dac",
 		.owner = THIS_MODULE,
 		.of_match_table = tau_dac_of_match,
 	},
