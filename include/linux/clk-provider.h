@@ -524,21 +524,25 @@ void of_gpio_clk_gate_setup(struct device_node *node);
  * struct clk_gpio_mux - gpio controlled clock multiplexer
  *
  * @hw:		handle between common and hardware-specific interfaces
- * @gpiod:	gpio descriptor
+ * @gpiod_sel:	gpio descriptor to select the parent of this clock multiplexer
+ * @gpiod_ena:	gpio descriptor to enable the output of this clock multiplexer
  *
  * Clock with a gpio control for selecting the parent clock.
- * Implements .get_parent, .set_parent and .determine_rate
+ * Implements .enable, .disable, .is_enabled, .get_parent, .set_parent and 
+ *            .determine_rate
  */
 
 struct clk_gpio_mux {
 	struct clk_hw	hw;
-	struct gpio_desc *gpiod;
+	struct gpio_desc *gpiod_sel;
+	struct gpio_desc *gpiod_ena;
 };
 
 extern const struct clk_ops clk_gpio_mux_ops;
 struct clk *clk_register_gpio_mux(struct device *dev, const char *name,
-		const char **parent_names, u8 num_parents, struct gpio_desc *gpiod,
-		unsigned long flags);
+		const char **parent_names, u8 num_parents,
+		struct gpio_desc *gpiod_sel, struct gpio_desc *gpiod_ena,
+		unsigned long clk_flags);
 
 void of_gpio_mux_clk_setup(struct device_node *node);
 

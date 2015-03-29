@@ -22,48 +22,82 @@
  * DOC: basic clock multiplexer which can be controlled with a gpio output
  * Traits of this clock:
  * prepare - clk_prepare only ensures that parents are prepared
- * enable - clk_enable only ensures that parents are enabled
+ * enable - clk_enable and clk_disable are functional & control gpio
  * rate - rate is only affected by parent switching.  No clk_set_rate support
  * parent - parent is adjustable through clk_set_parent
  */
 
 #define to_clk_gpio_mux(_hw) container_of(_hw, struct clk_gpio_mux, hw)
 
+static int clk_gpio_mux_enable(struct clk_hw *hw)
+{
+	struct clk_gpio_mux *clk = to_clk_gpio_mux(hw);
+
+	if (!clk->gpiod_ena) {
+		pr_err("%s: %s: DT property 'enable-gpios' not defined\n",
+				__func__, __clk_get_name(hw->clk));
+		return -ENOENT;
+	}
+
+	gpiod_set_value(clk->gpiod_ena, 1);
+
+	return 0;
+}
+
+static void clk_gpio_mux_disable(struct clk_hw *hw)
+{
+	struct clk_gpio_mux *clk = to_clk_gpio_mux(hw);
+
+	if (!clk->gpiod_ena) {
+		pr_err("%s: %s: DT property 'enable-gpios' not defined\n",
+				__func__, __clk_get_name(hw->clk));
+		return;
+	}
+
+	gpiod_set_value(clk->gpiod_ena, 0);
+}
+
+static int clk_gpio_mux_is_enabled(struct clk_hw *hw)
+{
+	struct clk_gpio_mux *clk = to_clk_gpio_mux(hw);
+
+	if (!clk->gpiod_ena) {
+		pr_err("%s: %s: DT property 'enable-gpios' not defined\n",
+				__func__, __clk_get_name(hw->clk));
+		return -EINVAL;
+	}
+
+	return gpiod_get_value(clk->gpiod_ena);
+}
+
 static u8 clk_gpio_mux_get_parent(struct clk_hw *hw)
 {
 	struct clk_gpio_mux *clk = to_clk_gpio_mux(hw);
 
-	printk(KERN_DEBUG "%s", __func__);
-
-	return gpiod_get_value(clk->gpiod);
+	return gpiod_get_value(clk->gpiod_sel);
 }
 
 static int clk_gpio_mux_set_parent(struct clk_hw *hw, u8 index)
 {
 	struct clk_gpio_mux *clk = to_clk_gpio_mux(hw);
 
-	printk(KERN_DEBUG "%s", __func__);
-
 	if (index > 1)
 		return -EINVAL;
 
-	gpiod_set_value(clk->gpiod, index);
+	gpiod_set_value(clk->gpiod_sel, index);
 
 	return 0;
 }
 
 const struct clk_ops clk_gpio_mux_ops = {
+	.enable = clk_gpio_mux_enable,
+	.disable = clk_gpio_mux_disable,
+	.is_enabled = clk_gpio_mux_is_enabled,
 	.get_parent = clk_gpio_mux_get_parent,
 	.set_parent = clk_gpio_mux_set_parent,
 	.determine_rate = __clk_mux_determine_rate,
 };
 EXPORT_SYMBOL_GPL(clk_gpio_mux_ops);
-
-const struct clk_ops clk_gpio_mux_ro_ops = {
-	.get_parent = clk_gpio_mux_get_parent,
-};
-EXPORT_SYMBOL_GPL(clk_gpio_mux_ro_ops);
-;
 
 /**
  * clk_register_gpio_mux - register a gpio clock mux with the clock framework
@@ -71,35 +105,20 @@ EXPORT_SYMBOL_GPL(clk_gpio_mux_ro_ops);
  * @name: name of this clock
  * @parent_names: names of this clock's parents
  * @num_parents: number of parents listed in @parent_names
- * @gpiod: gpio descriptor to select the parent of this clock
- * @flags: optional flags for basic clock
+ * @gpiod_sel: gpio descriptor to select the parent of this clock multiplexer
+ * @gpiod_ena: gpio descriptor to enable the output of this clock multiplexer
+ * @clk_flags: optional flags for basic clock
  */
 struct clk *clk_register_gpio_mux(struct device *dev, const char *name,
-		const char **parent_names, u8 num_parents, struct gpio_desc *gpiod,
-		unsigned long flags)
+		const char **parent_names, u8 num_parents,
+		struct gpio_desc *gpiod_sel, struct gpio_desc *gpiod_ena,
+		unsigned long clk_flags)
 {
 	struct clk_gpio_mux *clk_gpio_mux = NULL;
 	struct clk *clk = ERR_PTR(-EINVAL);
 	struct clk_init_data init = { NULL };
-	unsigned long gpio_flags;
+	unsigned long gpio_sel_flags, gpio_ena_flags;
 	int err;
-
-	if (gpiod_is_active_low(gpiod))
-		gpio_flags = GPIOF_OUT_INIT_HIGH;
-	else
-		gpio_flags = GPIOF_OUT_INIT_LOW;
-
-	if (dev)
-		err = devm_gpio_request_one(dev, desc_to_gpio(gpiod),
-				gpio_flags, name);
-	else
-		err = gpio_request_one(desc_to_gpio(gpiod), gpio_flags, name);
-
-	if (err) {
-		pr_err("%s: %s: Error requesting clock control gpio %u\n",
-		       __func__, name, desc_to_gpio(gpiod));
-		return ERR_PTR(err);
-	}
 
 	if (dev)
 		clk_gpio_mux = devm_kzalloc(dev, sizeof(struct clk_gpio_mux),
@@ -107,18 +126,56 @@ struct clk *clk_register_gpio_mux(struct device *dev, const char *name,
 	else
 		clk_gpio_mux = kzalloc(sizeof(struct clk_gpio_mux), GFP_KERNEL);
 
-	if (!clk_gpio_mux) {
-		clk = ERR_PTR(-ENOMEM);
-		goto cleanup;
+	if (!clk_gpio_mux)
+		return ERR_PTR(-ENOMEM);
+
+	if (gpiod_is_active_low(gpiod_sel))
+		gpio_sel_flags = GPIOF_OUT_INIT_HIGH;
+	else
+		gpio_sel_flags = GPIOF_OUT_INIT_LOW;
+
+	if (dev)
+		err = devm_gpio_request_one(dev, desc_to_gpio(gpiod_sel),
+				gpio_sel_flags, name);
+	else
+		err = gpio_request_one(desc_to_gpio(gpiod_sel),
+				gpio_sel_flags, name);
+
+	if (err) {
+		pr_err("%s: %s: Error requesting gpio %u\n",
+		       __func__, name, desc_to_gpio(gpiod_sel));
+		return ERR_PTR(err);
+	}
+	clk_gpio_mux->gpiod_sel = gpiod_sel;
+
+	if (gpiod_ena != NULL) {
+		if (gpiod_is_active_low(gpiod_ena))
+			gpio_ena_flags = GPIOF_OUT_INIT_HIGH;
+		else
+			gpio_ena_flags = GPIOF_OUT_INIT_LOW;
+
+		if (dev)
+			err = devm_gpio_request_one(dev,
+					desc_to_gpio(gpiod_ena),
+					gpio_ena_flags, name);
+		else
+			err = gpio_request_one(desc_to_gpio(gpiod_ena),
+					gpio_ena_flags, name);
+
+		if (err) {
+			pr_err("%s: %s: Error requesting gpio %u\n",
+				   __func__, name, desc_to_gpio(gpiod_ena));
+			return ERR_PTR(err);
+		}
+		clk_gpio_mux->gpiod_ena = gpiod_ena;
 	}
 
 	init.name = name;
 	init.ops = &clk_gpio_mux_ops;
-	init.flags = flags | CLK_IS_BASIC;
+	init.flags = clk_flags | CLK_IS_BASIC;
 	init.parent_names = parent_names;
 	init.num_parents = num_parents;
 
-	clk_gpio_mux->gpiod = gpiod;
 	clk_gpio_mux->hw.init = &init;
 
 	clk = clk_register(dev, &clk_gpio_mux->hw);
@@ -126,11 +183,11 @@ struct clk *clk_register_gpio_mux(struct device *dev, const char *name,
 	if (!IS_ERR(clk))
 		return clk;
 
-	if (!dev)
+	if (!dev) {
 		kfree(clk_gpio_mux);
-
-cleanup:
-	gpiod_put(gpiod);
+		gpiod_put(gpiod_ena);
+		gpiod_put(gpiod_sel);
+	}
 
 	return clk;
 }
@@ -157,7 +214,7 @@ static struct clk *of_clk_gpio_mux_delayed_register_get(
 	const char *clk_name = data->node->name;
 	int i, num_parents;
 	const char **parent_names;
-	struct gpio_desc *gpiod;
+	struct gpio_desc *gpiod_sel, *gpiod_ena;
 	int gpio;
 	u32 flags = 0;
 
@@ -169,16 +226,19 @@ static struct clk *of_clk_gpio_mux_delayed_register_get(
 	}
 
 	gpio = of_get_named_gpio_flags(data->node, "select-gpios", 0, NULL);
-	if (gpio < 0) {
-		mutex_unlock(&data->lock);
-		if (gpio != -EPROBE_DEFER)
-			pr_err("%s: %s: Can't get 'select-gpios' DT property\n",
-			       __func__, clk_name);
-		pr_warning("%s: %s: 'select-gpios' not yet ready, retry\n",
-			   __func__, clk_name);
-		return ERR_PTR(gpio);
+	if (!gpio_is_valid(gpio))
+		goto err_gpio;
+	gpiod_sel = gpio_to_desc(gpio);
+
+	gpio = of_get_named_gpio_flags(data->node, "enable-gpios", 0, NULL);
+	if (!gpio_is_valid(gpio)) {
+		if (gpio != -ENOENT)
+			goto err_gpio;
+		else
+			gpiod_ena = NULL;
+	} else {
+		gpiod_ena = gpio_to_desc(gpio);
 	}
-	gpiod = gpio_to_desc(gpio);
 
 	num_parents = of_clk_get_parent_count(data->node);
 	if (num_parents < 2) {
@@ -196,7 +256,7 @@ static struct clk *of_clk_gpio_mux_delayed_register_get(
 		parent_names[i] = of_clk_get_parent_name(data->node, i);
 	
 	clk = clk_register_gpio_mux(NULL, clk_name, parent_names, num_parents,
-			gpiod, flags);
+			gpiod_sel, gpiod_ena, flags);
 	if (IS_ERR(clk)) {
 		mutex_unlock(&data->lock);
 		return clk;
@@ -206,6 +266,16 @@ static struct clk *of_clk_gpio_mux_delayed_register_get(
 	mutex_unlock(&data->lock);
 
 	return clk;
+
+err_gpio:
+	mutex_unlock(&data->lock);
+	if (gpio == -EPROBE_DEFER)
+		pr_warning("%s: %s: GPIOs not yet available, retry later\n",
+				__func__, clk_name);
+	else
+		pr_err("%s: %s: Can't get GPIOs\n",
+				__func__, clk_name);
+	return ERR_PTR(gpio);
 }
 
 /**

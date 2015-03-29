@@ -6,9 +6,12 @@ This binding uses the common clock binding[1].
 
 Required properties:
 - compatible : shall be "gpio-mux-clock".
-- clocks: list of parent clocks.
+- clocks: list of two references to parent clocks.
 - #clock-cells : from common clock binding; shall be set to 0.
 - select-gpios : GPIO reference for selecting the parent clock.
+
+Optional properties:
+- enable-gpios : GPIO reference for enabling and disabling the clock.
 
 Example:
 	clock {
@@ -16,4 +19,5 @@ Example:
 		clocks = <&parentclk1>, <&parentclk2>;
 		#clock-cells = <0>;
 		select-gpios = <&gpio 1 GPIO_ACTIVE_HIGH>;
+		enable-gpios = <&gpio 2 GPIO_ACTIVE_HIGH>;
 	};
