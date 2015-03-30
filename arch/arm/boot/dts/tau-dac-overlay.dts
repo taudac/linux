@@ -80,12 +80,14 @@
 				reg = <0x60>;
 				clocks = <&xtal>, <&mux_mclk>;
 				clock-names = "xtal", "clkin";
+				silabs,pll-source = <0 1>, <1 1>;
 				status = "okay";
 
 				clkout0 {
 					reg = <0>;
 					silabs,disable-state = <2>;
-					silabs,clock-source = <3>;
+					silabs,multisynth-source = <0>;
+					silabs,clock-source = <1>;
 				};
 
 				clkout1 {
@@ -96,7 +98,8 @@
 				clkout2 {
 					reg = <2>;
 					silabs,disable-state = <2>;
-					silabs,clock-source = <3>;
+					silabs,multisynth-source = <0>;
+					silabs,clock-source = <1>;
 				};
 
 				clkout3 {
@@ -119,7 +122,8 @@
 				clkout6 {
 					reg = <6>;
 					silabs,disable-state = <2>;
-					silabs,clock-source = <3>;
+					silabs,multisynth-source = <0>;
+					silabs,clock-source = <1>;
 				};
 
 				clkout7 {

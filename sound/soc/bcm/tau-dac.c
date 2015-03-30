@@ -345,18 +345,6 @@ static int tau_dac_set_clk(struct device *dev,
 	if (IS_ERR(drvdata->mux_mclk))
 		return -EINVAL;
 		
-	drvdata->i2s_clk[LRCLK_CPU] = devm_clk_get(dev, "lrclk-cpu");
-	if (IS_ERR(drvdata->i2s_clk[LRCLK_CPU]))
-		return -EINVAL;
-
-	drvdata->i2s_clk[LRCLK_DACL] = devm_clk_get(dev, "lrclk-dacl");
-	if (IS_ERR(drvdata->i2s_clk[LRCLK_DACL]))
-		return -EINVAL;
-
-	drvdata->i2s_clk[LRCLK_DACR] = devm_clk_get(dev, "lrclk-dacr");
-	if (IS_ERR(drvdata->i2s_clk[LRCLK_DACR]))
-		return -EINVAL;
-
 	drvdata->i2s_clk[BCLK_CPU] = devm_clk_get(dev, "bclk-cpu");
 	if (IS_ERR(drvdata->i2s_clk[BCLK_CPU]))
 		return -EINVAL;
@@ -367,6 +355,18 @@ static int tau_dac_set_clk(struct device *dev,
 
 	drvdata->i2s_clk[BCLK_DACR] = devm_clk_get(dev, "bclk-dacr");
 	if (IS_ERR(drvdata->i2s_clk[BCLK_DACR]))
+		return -EINVAL;
+
+	drvdata->i2s_clk[LRCLK_CPU] = devm_clk_get(dev, "lrclk-cpu");
+	if (IS_ERR(drvdata->i2s_clk[LRCLK_CPU]))
+		return -EINVAL;
+
+	drvdata->i2s_clk[LRCLK_DACL] = devm_clk_get(dev, "lrclk-dacl");
+	if (IS_ERR(drvdata->i2s_clk[LRCLK_DACL]))
+		return -EINVAL;
+
+	drvdata->i2s_clk[LRCLK_DACR] = devm_clk_get(dev, "lrclk-dacr");
+	if (IS_ERR(drvdata->i2s_clk[LRCLK_DACR]))
 		return -EINVAL;
 
 	return 0;
