@@ -443,7 +443,7 @@ static int tau_dac_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id tau_dac_of_match[] = {
-	{ .compatible = "tau-dac,tau-dac-1", },
+	{ .compatible = "tau-dac,dm101", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, tau_dac_of_match);

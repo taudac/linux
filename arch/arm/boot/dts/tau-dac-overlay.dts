@@ -134,14 +134,14 @@
 	fragment@3 {
 		target = <&sound>;
 		__overlay__ {
-			compatible = "tau-dac,tau-dac-1";
-			tau-dac,model = "TauDAC-v1r0";
+			compatible = "tau-dac,dm101";
+			tau-dac,model = "TauDAC-DM101";
 			tau-dac,i2s-controller = <&i2s>;
 			tau-dac,codecs = <&wm8741_left>, <&wm8741_right>;
 
 			clocks      = <&osc24>,
-					      <&osc22>,
-					      <&mux_mclk>,
+				      <&osc22>,
+				      <&mux_mclk>,
 			              <&si5351 7>, 
 			              <&si5351 3>, 
 			              <&si5351 5>,
@@ -149,8 +149,8 @@
 			              <&si5351 2>, 
 			              <&si5351 6>;
 			clock-names = "mclk-24M",
-					      "mclk-22M",
-					      "mux-mclk",
+				      "mclk-22M",
+				      "mux-mclk",
 			              "bclk-cpu",  
 			              "bclk-dacl",  
 			              "bclk-dacr",
