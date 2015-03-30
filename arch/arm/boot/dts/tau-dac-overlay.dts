@@ -41,7 +41,7 @@
 			
 			mux_mclk: tau_mux_mclk {
 				compatible = "gpio-mux-clock";
-				clocks = <&osc22>, <&osc24>;
+				clocks = <&osc24>, <&osc22>;
 				#clock-cells = <0>;
 				select-gpios = <&gpio 22 0>;
 				enable-gpios = <&gpio 27 0>;
