@@ -102,21 +102,9 @@ static void tau_dac_unprepare_i2s_clk(struct snd_soc_card_drvdata *drvdata)
 }
 
 static int tau_dac_enable_i2s_clk(struct snd_soc_card_drvdata *drvdata,
-		unsigned long lrclk_rate, unsigned long bclk_rate)
+		unsigned long bclk_rate, unsigned long lrclk_rate)
 {
 	int ret;
-
-	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_CPU], lrclk_rate);
-	if (ret != 0)
-		return ret;
-
-	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_DACL], lrclk_rate);
-	if (ret != 0)
-		return ret;
-
-	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_DACR], lrclk_rate);
-	if (ret != 0)
-		return ret;
 
 	ret = clk_set_rate(drvdata->i2s_clk[BCLK_CPU], bclk_rate);
 	if (ret != 0)
@@ -127,6 +115,18 @@ static int tau_dac_enable_i2s_clk(struct snd_soc_card_drvdata *drvdata,
 		return ret;
 
 	ret = clk_set_rate(drvdata->i2s_clk[BCLK_DACR], bclk_rate);
+	if (ret != 0)
+		return ret;
+
+	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_CPU], lrclk_rate);
+	if (ret != 0)
+		return ret;
+
+	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_DACL], lrclk_rate);
+	if (ret != 0)
+		return ret;
+
+	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_DACR], lrclk_rate);
 	if (ret != 0)
 		return ret;
 
@@ -156,8 +156,8 @@ static int tau_dac_init(struct snd_soc_pcm_runtime *rtd)
 	int num_codecs = rtd->num_codecs;
 	struct snd_soc_dai **codec_dais = rtd->codec_dais;
 
-	//unsigned int mclk_freq = 22579200;
-	unsigned int mclk_freq = 24576000;
+	unsigned int mclk_freq = 22579200;
+	//unsigned int mclk_freq = 24576000;
 
 	/*  HACK: Due to the codec driver implementation, we have to call
 	 *  set_sysclk here. However, we don't yet know which clock to set.
@@ -202,11 +202,11 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_dai **codec_dais = rtd->codec_dais;
 	int num_codecs = rtd->num_codecs;
 
-	unsigned int mclk_rate, bclk_rate, lrclk_rate;
-	unsigned int rate = params_rate(params);
+	unsigned int mclk_rate, bclk_rate;
+	unsigned int lrclk_rate = params_rate(params);
 	int width = params_width(params);
 
-	switch (rate) {
+	switch (lrclk_rate) {
 	case 44100:
 	case 88200:
 	case 176400: // TODO: check these rates in wm8741.c 168
@@ -219,47 +219,46 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 		mclk_rate = 24576000;
 		break;
 	default:
-		dev_err(rtd->card->dev, "Rate not supported: %d", rate);
+		dev_err(rtd->card->dev, "Rate not supported: %d", lrclk_rate);
 		return -EINVAL;
 	}
 
+	bclk_rate = 2 * width * lrclk_rate;
+
 	/* set cpu DAI configuration */
-	ret = snd_soc_dai_set_bclk_ratio(cpu_dai, 32 * 2);
-	if (ret != 0)
+	ret = snd_soc_dai_set_bclk_ratio(cpu_dai, 2 * width);
+	if (ret < 0)
 		return ret;
 
 	ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_I2S |
 			SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM);
-	if (ret != 0)
+	if (ret < 0)
 		return ret;
 
 	for (i = 0; i < num_codecs; i++) {
 		/* set codecs sysclk */
 		ret = snd_soc_dai_set_sysclk(codec_dais[i],
 				WM8741_SYSCLK, mclk_rate, SND_SOC_CLOCK_IN);
-		if (ret != 0)
+		if (ret < 0)
 			 return ret;
 
 		/* set codec DAI configuration */
 		ret = snd_soc_dai_set_fmt(codec_dais[i], SND_SOC_DAIFMT_I2S |
 				SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS);
-		if (ret != 0)
+		if (ret < 0)
 			return ret;
 	}
 
 	/* enable clocks*/
-	bclk_rate = rate * width;
-	lrclk_rate = rate;
-
 	ret = tau_dac_enable_mclk(drvdata, mclk_rate);
-	if (ret != 0) {
+	if (ret < 0) {
 		dev_err(rtd->card->dev, "Enabling master clock failed: %d\n",
 				ret);
 		return ret;
 	}
 
 	ret = tau_dac_enable_i2s_clk(drvdata, bclk_rate, lrclk_rate);
-	if (ret != 0) {
+	if (ret < 0) {
 		dev_err(rtd->card->dev, "Starting I2S clocks failed: %d\n",
 				ret);
 		return ret;
