@@ -81,6 +81,7 @@
 				clocks = <&xtal>, <&mux_mclk>;
 				clock-names = "xtal", "clkin";
 				silabs,pll-source = <0 1>, <1 1>;
+				silabs,clkin-divider = <8>;
 				status = "okay";
 
 				clkout0 {

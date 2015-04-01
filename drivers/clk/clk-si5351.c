@@ -1179,7 +1179,7 @@ static int si5351_dt_parse(struct i2c_client *client,
 	 * property silabs,clkin-divider
 	 * allow to set clkin input divider
 	 */
-	if (of_property_read_u32(np, "silabs,clkin-divider", &val)) {
+	if (!of_property_read_u32(np, "silabs,clkin-divider", &val)) {
 		switch (val) {
 		case SI5351_CLKIN_INPUT_DIV_2:
 		case SI5351_CLKIN_INPUT_DIV_4:
