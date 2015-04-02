@@ -347,27 +347,27 @@ static int tau_dac_set_clk(struct device *dev,
 		
 	drvdata->i2s_clk[BCLK_CPU] = devm_clk_get(dev, "bclk-cpu");
 	if (IS_ERR(drvdata->i2s_clk[BCLK_CPU]))
-		return -EINVAL;
+		return -EPROBE_DEFER;
 
 	drvdata->i2s_clk[BCLK_DACL] = devm_clk_get(dev, "bclk-dacl");
 	if (IS_ERR(drvdata->i2s_clk[BCLK_DACL]))
-		return -EINVAL;
+		return -EPROBE_DEFER;
 
 	drvdata->i2s_clk[BCLK_DACR] = devm_clk_get(dev, "bclk-dacr");
 	if (IS_ERR(drvdata->i2s_clk[BCLK_DACR]))
-		return -EINVAL;
+		return -EPROBE_DEFER;
 
 	drvdata->i2s_clk[LRCLK_CPU] = devm_clk_get(dev, "lrclk-cpu");
 	if (IS_ERR(drvdata->i2s_clk[LRCLK_CPU]))
-		return -EINVAL;
+		return -EPROBE_DEFER;
 
 	drvdata->i2s_clk[LRCLK_DACL] = devm_clk_get(dev, "lrclk-dacl");
 	if (IS_ERR(drvdata->i2s_clk[LRCLK_DACL]))
-		return -EINVAL;
+		return -EPROBE_DEFER;
 
 	drvdata->i2s_clk[LRCLK_DACR] = devm_clk_get(dev, "lrclk-dacr");
 	if (IS_ERR(drvdata->i2s_clk[LRCLK_DACR]))
-		return -EINVAL;
+		return -EPROBE_DEFER;
 
 	return 0;
 }
@@ -400,7 +400,8 @@ static int tau_dac_probe(struct platform_device *pdev)
 	/* set clocks */
 	ret = tau_dac_set_clk(&pdev->dev, drvdata);
 	if (ret != 0) {
-		dev_err(&pdev->dev, "Setting clocks failed: %d\n", ret);
+		if (ret != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "Getting clocks failed: %d\n", ret);
 		return ret;
 	}
 
