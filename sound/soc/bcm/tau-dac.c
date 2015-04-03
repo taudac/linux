@@ -42,8 +42,9 @@ struct snd_soc_card_drvdata {
 	struct clk *mclk24;
 	struct clk *mclk22;
 	struct clk *mux_mclk;
+	bool mclk_enabled;
 	struct clk *i2s_clk[NUM_I2S_CLOCKS];
-	bool clk_enabled;
+	bool i2s_clk_prepared[NUM_I2S_CLOCKS];
 };
 
 /*
@@ -53,8 +54,12 @@ static void tau_dac_clk_unprepare(struct snd_soc_card_drvdata *drvdata)
 {
 	int i;
 
-	for (i = 0; i < NUM_I2S_CLOCKS; i++)
-		clk_unprepare(drvdata->i2s_clk[i]);
+	for (i = 0; i < NUM_I2S_CLOCKS; i++) {
+		if (drvdata->i2s_clk_prepared[i]) {
+			clk_unprepare(drvdata->i2s_clk[i]);
+			drvdata->i2s_clk_prepared[i] = false;
+		}
+	}
 }
 
 static int tau_dac_clk_prepare(struct snd_soc_card_drvdata *drvdata)
@@ -62,9 +67,12 @@ static int tau_dac_clk_prepare(struct snd_soc_card_drvdata *drvdata)
 	int ret, i;
 
 	for (i = 0; i < NUM_I2S_CLOCKS; i++) {
-		ret = clk_prepare(drvdata->i2s_clk[i]);
-		if (ret != 0)
-			return ret;
+		if (!drvdata->i2s_clk_prepared[i]) {
+			ret = clk_prepare(drvdata->i2s_clk[i]);
+			if (ret != 0)
+				return ret;
+			drvdata->i2s_clk_prepared[i] = true;
+		}
 	}
 
 	return 0;
@@ -72,9 +80,9 @@ static int tau_dac_clk_prepare(struct snd_soc_card_drvdata *drvdata)
 
 static void tau_dac_clk_disable(struct snd_soc_card_drvdata *drvdata)
 {
-	if (drvdata->clk_enabled) {
+	if (drvdata->mclk_enabled) {
 		clk_disable(drvdata->mux_mclk);
-		drvdata->clk_enabled = false;
+		drvdata->mclk_enabled = false;
 	}
 }
 
@@ -102,39 +110,34 @@ static int tau_dac_clk_enable(struct snd_soc_card_drvdata *drvdata,
 	if (ret < 0)
 		return ret;
 
-	drvdata->clk_enabled = true;
+	drvdata->mclk_enabled = true;
 	msleep(2);
 
 	ret = clk_set_rate(drvdata->i2s_clk[BCLK_CPU], bclk_rate);
 	if (ret < 0)
-		goto clk_cleanup;
-
+		return ret;
 
 	ret = clk_set_rate(drvdata->i2s_clk[BCLK_DACL], bclk_rate);
 	if (ret < 0)
-		goto clk_cleanup;
+		return ret;
 
 	ret = clk_set_rate(drvdata->i2s_clk[BCLK_DACR], bclk_rate);
 	if (ret < 0)
-		goto clk_cleanup;
+		return ret;
 
 	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_CPU], lrclk_rate);
 	if (ret < 0)
-		goto clk_cleanup;
+		return ret;
 
 	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_DACL], lrclk_rate);
 	if (ret < 0)
-		goto clk_cleanup;
+		return ret;
 
 	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_DACR], lrclk_rate);
 	if (ret < 0)
-		goto clk_cleanup;
+		return ret;
 
 	return 0;
-
-clk_cleanup:
-	tau_dac_clk_disable(drvdata);
-	return ret;
 }
 
 /*
@@ -193,6 +196,7 @@ static void tau_dac_shutdown(struct snd_pcm_substream *substream)
 			snd_soc_card_get_drvdata(rtd->card);
 
 	tau_dac_clk_disable(drvdata);
+	tau_dac_clk_unprepare(drvdata);
 }
 
 static int tau_dac_hw_params(struct snd_pcm_substream *substream,
@@ -254,6 +258,12 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* enable clocks*/
+	ret = tau_dac_clk_prepare(drvdata);
+	if (ret < 0) {
+		dev_err(rtd->card->dev, "Preparing clocks failed: %d\n", ret);
+		return ret;
+	}
+
 	ret = tau_dac_clk_enable(drvdata, mclk_rate, bclk_rate, lrclk_rate);
 	if (ret < 0) {
 		dev_err(rtd->card->dev, "Starting clocks failed: %d\n", ret);
@@ -405,14 +415,6 @@ static int tau_dac_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	/* prepare clocks */
-	ret = tau_dac_clk_prepare(drvdata);
-	if (ret != 0) {
-		dev_err(&pdev->dev, "Preparing clocks failed: %d\n", ret);
-		tau_dac_clk_unprepare(drvdata);
-		return ret;
-	}
-
 	/* register card */
 	snd_soc_card_set_drvdata(&tau_dac_card, drvdata);
 	snd_soc_of_parse_card_name(&tau_dac_card, "tau-dac,model");
@@ -421,7 +423,6 @@ static int tau_dac_probe(struct platform_device *pdev)
 		if (ret != -EPROBE_DEFER)
 			dev_err(&pdev->dev, "snd_soc_register_card() failed: "
 					"%d\n", ret);
-		tau_dac_clk_unprepare(drvdata);
 		return ret;
 	}
 
@@ -430,11 +431,6 @@ static int tau_dac_probe(struct platform_device *pdev)
 
 static int tau_dac_remove(struct platform_device *pdev)
 {
-	struct snd_soc_card_drvdata *drvdata =
-			snd_soc_card_get_drvdata(&tau_dac_card);
-
-	tau_dac_clk_unprepare(drvdata);
-
 	return snd_soc_unregister_card(&tau_dac_card);
 }
 
