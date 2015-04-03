@@ -88,6 +88,7 @@
 					silabs,disable-state = <2>;
 					silabs,multisynth-source = <0>;
 					silabs,clock-source = <1>;
+					silabs,pll-master;
 				};
 
 				clkout1 {
@@ -100,6 +101,7 @@
 					silabs,disable-state = <2>;
 					silabs,multisynth-source = <0>;
 					silabs,clock-source = <1>;
+					silabs,pll-master;
 				};
 
 				clkout3 {
@@ -124,6 +126,7 @@
 					silabs,disable-state = <2>;
 					silabs,multisynth-source = <0>;
 					silabs,clock-source = <1>;
+					silabs,pll-master;
 				};
 
 				clkout7 {
