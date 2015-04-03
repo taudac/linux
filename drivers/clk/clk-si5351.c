@@ -62,8 +62,6 @@ struct si5351_driver_data {
 	struct clk		*pclkin;
 	const char		*pclkin_name;
 	struct clk_hw		clkin;
-	
-	unsigned int clkin_div;
 
 	struct si5351_hw_data	pll[2];
 	struct si5351_hw_data	*msynth;
@@ -277,13 +275,13 @@ static unsigned long si5351_clkin_recalc_rate(struct clk_hw *hw,
 	unsigned char idiv;
 
 	rate = parent_rate;
-	if (parent_rate > 160000000 || drvdata->clkin_div == 8) {
+	if (parent_rate > 160000000) {
 		idiv = SI5351_CLKIN_DIV_8;
 		rate /= 8;
-	} else if (parent_rate > 80000000 || drvdata->clkin_div == 4) {
+	} else if (parent_rate > 80000000) {
 		idiv = SI5351_CLKIN_DIV_4;
 		rate /= 4;
-	} else if (parent_rate > 40000000 || drvdata->clkin_div == 2) {
+	} else if (parent_rate > 40000000) {
 		idiv = SI5351_CLKIN_DIV_2;
 		rate /= 2;
 	} else {
@@ -1174,24 +1172,6 @@ static int si5351_dt_parse(struct i2c_client *client,
 			return -EINVAL;
 		}
 	}
-	
-	/*
-	 * property silabs,clkin-divider
-	 * allow to set clkin input divider
-	 */
-	if (!of_property_read_u32(np, "silabs,clkin-divider", &val)) {
-		switch (val) {
-		case SI5351_CLKIN_INPUT_DIV_2:
-		case SI5351_CLKIN_INPUT_DIV_4:
-		case SI5351_CLKIN_INPUT_DIV_8:
-			pdata->clkin.div = val;
-			break;
-		default:
-			dev_err(&client->dev, 
-				"invalid clkin input divider %d\n", val);
-			return -EINVAL;
-		}
-	} 
 
 	/* per clkout properties */
 	for_each_child_of_node(np, child) {
@@ -1350,7 +1330,6 @@ static int si5351_i2c_probe(struct i2c_client *client,
 	drvdata->variant = variant;
 	drvdata->pxtal = pdata->clk_xtal;
 	drvdata->pclkin = pdata->clk_clkin;
-	drvdata->clkin_div = pdata->clkin.div;
 
 	drvdata->regmap = devm_regmap_init_i2c(client, &si5351_regmap_config);
 	if (IS_ERR(drvdata->regmap)) {

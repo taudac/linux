@@ -8,20 +8,6 @@
 struct clk;
 
 /**
- * enum si5351_clkin_div - Si5351 clkin input divider (Si5351C only)
- * @SI5351_CLKIN_INPUT_DIV_DEFAULT: default, do not change eeprom config
- * @SI5351_CLKIN_INPUT_DIV_2: clkin input is divider is 2
- * @SI5351_CLKIN_INPUT_DIV_4: clkin input is divider is 4
- * @SI5351_CLKIN_INPUT_DIV_8: clkin input is divider is 8
- */
-enum si5351_clkin_div {
-	SI5351_CLKIN_INPUT_DIV_DEFAULT = 0,
-	SI5351_CLKIN_INPUT_DIV_2 = 2,
-	SI5351_CLKIN_INPUT_DIV_4 = 4,
-	SI5351_CLKIN_INPUT_DIV_8 = 8,
-};
-
-/**
  * enum si5351_pll_src - Si5351 pll clock source
  * @SI5351_PLL_SRC_DEFAULT: default, do not change eeprom config
  * @SI5351_PLL_SRC_XTAL: pll source clock is XTAL input
@@ -96,14 +82,6 @@ enum si5351_disable_state {
 };
 
 /**
- * struct si5351_clkin_config - Si5351C clock input configuration
- * @div: clkin input divider 
- */
-struct si5351_clkin_config {
-	enum si5351_clkin_div div;
-};
-
-/**
  * struct si5351_clkout_config - Si5351 clock output configuration
  * @clkout: clkout number
  * @multisynth_src: multisynth source clock
@@ -125,14 +103,12 @@ struct si5351_clkout_config {
  * struct si5351_platform_data - Platform data for the Si5351 clock driver
  * @clk_xtal: xtal input clock
  * @clk_clkin: clkin input clock
- * @clkin: clkin configuration
  * @pll_src: array of pll source clock setting
  * @clkout: array of clkout configuration
  */
 struct si5351_platform_data {
 	struct clk *clk_xtal;
 	struct clk *clk_clkin;
-	struct si5351_clkin_config clkin;
 	enum si5351_pll_src pll_src[2];
 	struct si5351_clkout_config clkout[8];
 };

@@ -24,8 +24,6 @@ Required properties:
 Optional properties:
 - silabs,pll-source: pair of (number, source) for each pll. Allows
   to overwrite clock source of pll A (number=0) or B (number=1).
-- silabs,clkin-divider: clkin input diver, shall be one of {2,4,6,8} 
-  (si5351c only).
 
 ==Child nodes==
 
@@ -76,9 +74,6 @@ i2c-master-node {
 
 		/* connect xtal input as source of pll0 and pll1 */
 		silabs,pll-source = <0 0>, <1 0>;
-
-		/* set clkin input divider to 4 */
-		silabs,clkin-divider = <4>;
 
 		/*
 		 * overwrite clkout0 configuration with:
