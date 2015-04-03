@@ -85,9 +85,9 @@
 
 				clkout0 {
 					reg = <0>;
-					silabs,disable-state = <2>;
+					silabs,disable-state = <2>;					
+					silabs,clock-source = <0>;
 					silabs,multisynth-source = <0>;
-					silabs,clock-source = <1>;
 				};
 
 				clkout1 {
@@ -97,15 +97,16 @@
 
 				clkout2 {
 					reg = <2>;
-					silabs,disable-state = <2>;
+					silabs,disable-state = <2>;					
+					silabs,clock-source = <0>;
 					silabs,multisynth-source = <0>;
-					silabs,clock-source = <1>;
 				};
 
 				clkout3 {
 					reg = <3>;
-					silabs,disable-state = <2>;
-					silabs,clock-source = <3>;
+					silabs,disable-state = <2>;					
+					silabs,clock-source = <0>;
+					silabs,multisynth-source = <0>;
 				};
 
 				clkout4 {
@@ -115,21 +116,23 @@
 
 				clkout5 {
 					reg = <5>;
-					silabs,disable-state = <2>;
-					silabs,clock-source = <3>;
+					silabs,disable-state = <2>;					
+					silabs,clock-source = <0>;
+					silabs,multisynth-source = <1>;
 				};
 
 				clkout6 {
 					reg = <6>;
-					silabs,disable-state = <2>;
-					silabs,multisynth-source = <0>;
+					silabs,disable-state = <2>;					
 					silabs,clock-source = <1>;
+					silabs,multisynth-source = <1>;
 				};
 
 				clkout7 {
 					reg = <7>;
-					silabs,disable-state = <2>;
-					silabs,clock-source = <3>;
+					silabs,disable-state = <2>;				
+					silabs,clock-source = <1>;
+					silabs,multisynth-source = <0>;
 				};
 			};
 		};
