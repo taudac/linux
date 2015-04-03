@@ -50,6 +50,44 @@ struct snd_soc_card_drvdata {
 /*
  * clocks
  */
+static int tau_dac_clk_init(struct snd_soc_card_drvdata *drvdata)
+{
+	int ret;
+	struct clk *clkin, *pll, *ms0, *ms4;
+	unsigned long mclk_rate, pll_rate, ms_rate;
+
+	ms0 = clk_get_parent(drvdata->i2s_clk[LRCLK_CPU]);
+	ms4 = clk_get_parent(drvdata->i2s_clk[LRCLK_DACR]);
+	if (IS_ERR(ms0) || IS_ERR(ms4))
+		return -EINVAL;
+
+	pll = clk_get_parent(ms4);
+	if (IS_ERR(pll))
+		return -EINVAL;
+
+	clkin = clk_get_parent(pll);
+	if (IS_ERR(clkin))
+		return -EINVAL;
+
+	mclk_rate = clk_get_rate(clkin);
+	pll_rate = mclk_rate * 27;
+	ms_rate = mclk_rate / 512 * 128;
+
+	ret = clk_set_rate(pll, pll_rate);
+	if (ret < 0)
+		return ret;
+
+	ret = clk_set_rate(ms0, ms_rate);
+	if (ret < 0)
+		return ret;
+
+	ret = clk_set_rate(ms4, ms_rate);
+	if (ret < 0)
+		return ret;
+
+	return 0;
+}
+
 static void tau_dac_clk_unprepare(struct snd_soc_card_drvdata *drvdata)
 {
 	int i;
@@ -162,9 +200,16 @@ static int tau_dac_init(struct snd_soc_pcm_runtime *rtd)
 	int ret, i;
 	int num_codecs = rtd->num_codecs;
 	struct snd_soc_dai **codec_dais = rtd->codec_dais;
+	struct snd_soc_card_drvdata *drvdata =
+			snd_soc_card_get_drvdata(rtd->card);
 
 	unsigned int mclk_freq = 22579200;
 	//unsigned int mclk_freq = 24576000;
+
+	ret = tau_dac_clk_init(drvdata);
+	if (ret < 0) {
+		dev_err(rtd->dev, "Initializing clocks failed");
+	}
 
 	/*  HACK: Due to the codec driver implementation, we have to call
 	 *  set_sysclk here. However, we don't yet know which clock to set.
@@ -177,7 +222,7 @@ static int tau_dac_init(struct snd_soc_pcm_runtime *rtd)
 		/* set codecs sysclk */
 		ret = snd_soc_dai_set_sysclk(codec_dais[i],
 				WM8741_SYSCLK, mclk_freq, SND_SOC_CLOCK_IN);
-		if (ret != 0)
+		if (ret < 0)
 			 return ret;
 	}
 
