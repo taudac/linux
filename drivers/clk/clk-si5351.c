@@ -1337,12 +1337,16 @@ static int si5351_i2c_probe(struct i2c_client *client,
 		return PTR_ERR(drvdata->regmap);
 	}
 
-	/* Disable interrupts */
+	/* disable interrupts */
 	si5351_reg_write(drvdata, SI5351_INTERRUPT_MASK, 0xf0);
-	/* Ensure pll select is on XTAL for Si5351A/B */
+
+	/* ensure pll select is on XTAL for Si5351A/B */
 	if (drvdata->variant != SI5351_VARIANT_C)
 		si5351_set_bits(drvdata, SI5351_PLL_INPUT_SOURCE,
 				SI5351_PLLA_SOURCE | SI5351_PLLB_SOURCE, 0);
+
+	/* disable all clock outputs */
+	si5351_reg_write(drvdata, SI5351_OUTPUT_ENABLE_CTRL, 0xff);
 
 	/* setup clock configuration */
 	for (n = 0; n < 2; n++) {
