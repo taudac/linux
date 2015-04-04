@@ -552,7 +552,8 @@ static const struct clk_ops si5351_pll_ops = {
  * MSx_P2[19:0] = 128 * b - c * floor(128 * b/c) = (128*b) mod c
  * MSx_P3[19:0] = c
  *
- * MS[6,7] are integer (P1) divide only, P2 = 0, P3 = 0
+ * MS[6,7] are integer (P1) divide only, P1 = divide value,
+ * P2 and P3 are not applicable
  *
  * for 150MHz < fOUT <= 160MHz:
  *
@@ -718,11 +719,18 @@ static long si5351_msynth_round_rate(struct clk_hw *hw, unsigned long rate,
 	do_div(lltmp, a * c + b);
 	rate  = (unsigned long)lltmp;
 
-	/* calculate parameters */
+	/*
+	 * calculate parameters
+	 * for multisync6-7 set p1 directly, fOUT = fIN / p1
+	 */
 	if (divby4) {
 		hwdata->params.p3 = 1;
 		hwdata->params.p2 = 0;
 		hwdata->params.p1 = 0;
+	} else if (hwdata->num >= 6) {
+		hwdata->params.p3 = 1;
+		hwdata->params.p2 = 0;
+		hwdata->params.p1 = a;
 	} else {
 		hwdata->params.p3  = c;
 		hwdata->params.p2  = (128 * b) % c;
