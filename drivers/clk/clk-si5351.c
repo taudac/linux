@@ -1412,6 +1412,9 @@ static int si5351_i2c_probe(struct i2c_client *client,
 		}
 	}
 
+	/* reset plla and pllb */
+	si5351_reg_write(drvdata, SI5351_PLL_RESET, 0xac);
+
 	/* register xtal input clock gate */
 	memset(&init, 0, sizeof(init));
 	init.name = si5351_input_names[0];
