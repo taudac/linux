@@ -1542,8 +1542,6 @@ static int si5351_i2c_probe(struct i2c_client *client,
 		init.name = si5351_clkout_names[n];
 		init.ops = &si5351_clkout_ops;
 		init.flags = 0;
-		if (pdata->clkout[n].clkout_src == SI5351_CLKOUT_SRC_MSYNTH_N)
-			init.flags |= CLK_SET_RATE_PARENT;
 		init.parent_names = parent_names;
 		init.num_parents = num_parents;
 		clk = devm_clk_register(&client->dev, &drvdata->clkout[n].hw);
