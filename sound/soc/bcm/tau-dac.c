@@ -206,7 +206,8 @@ static int tau_dac_init(struct snd_soc_pcm_runtime *rtd)
 
 	ret = tau_dac_clk_init(drvdata);
 	if (ret < 0) {
-		dev_err(rtd->dev, "Initializing clocks failed");
+		dev_err(rtd->card->dev, "Initializing clocks failed\n");
+		return ret;
 	}
 
 	/*  HACK: Due to the codec driver implementation, we have to call
