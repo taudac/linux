@@ -55,7 +55,7 @@ static int tau_dac_clk_init(struct snd_soc_card_drvdata *drvdata)
 	int ret, i;
 	struct clk *clkin, *pll, *ms;
 	unsigned long clkin_rate, pll_rate, ms_rate;
-	const int pll_fdbk_div = 33;
+	const int pll_fdbk_div = 31;
 
 	for (i = 0; i < NUM_I2S_CLOCKS; i++) {
 		ms = clk_get_parent(drvdata->i2s_clk[i]);
@@ -72,7 +72,7 @@ static int tau_dac_clk_init(struct snd_soc_card_drvdata *drvdata)
 
 		clkin_rate = clk_get_rate(clkin);
 		pll_rate = clkin_rate * pll_fdbk_div;
-		ms_rate = clkin_rate / 512 * 128;
+		ms_rate = clkin_rate / 4;
 
 		ret = clk_set_rate(pll, pll_rate);
 		if (ret < 0)
