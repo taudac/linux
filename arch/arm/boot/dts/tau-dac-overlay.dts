@@ -106,7 +106,7 @@
 					reg = <3>;
 					silabs,disable-state = <2>;					
 					silabs,clock-source = <0>;
-					silabs,multisynth-source = <0>;
+					silabs,multisynth-source = <1>;
 				};
 
 				clkout4 {
@@ -124,15 +124,15 @@
 				clkout6 {
 					reg = <6>;
 					silabs,disable-state = <2>;					
-					silabs,clock-source = <1>;
-					silabs,multisynth-source = <1>;
+					silabs,clock-source = <0>;
+					silabs,multisynth-source = <0>;
 				};
 
 				clkout7 {
 					reg = <7>;
 					silabs,disable-state = <2>;				
-					silabs,clock-source = <1>;
-					silabs,multisynth-source = <0>;
+					silabs,clock-source = <0>;
+					silabs,multisynth-source = <1>;
 				};
 			};
 		};
