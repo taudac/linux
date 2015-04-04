@@ -1345,6 +1345,13 @@ static int si5351_i2c_probe(struct i2c_client *client,
 		return PTR_ERR(drvdata->regmap);
 	}
 
+	/* ensure that the device is ready */
+	if (si5351_reg_read(drvdata, SI5351_DEVICE_STATUS) &
+			SI5351_STATUS_SYS_INIT) {
+		dev_dbg(&client->dev, "device is in initialization mode");
+		return -EPROBE_DEFER;
+	}
+
 	/* disable interrupts */
 	si5351_reg_write(drvdata, SI5351_INTERRUPT_MASK, 0xf0);
 
