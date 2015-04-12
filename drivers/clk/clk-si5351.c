@@ -552,7 +552,8 @@ static const struct clk_ops si5351_pll_ops = {
  * MSx_P2[19:0] = 128 * b - c * floor(128 * b/c) = (128*b) mod c
  * MSx_P3[19:0] = c
  *
- * MS[6,7] are integer (P1) divide only, P2 = 0, P3 = 0
+ * MS[6,7] are integer (P1) divide only, P1 = divide value,
+ * P2 and P3 are not applicable
  *
  * for 150MHz < fOUT <= 160MHz:
  *
@@ -679,6 +680,16 @@ static long si5351_msynth_round_rate(struct clk_hw *hw, unsigned long rate,
 		c = 1;
 
 		*parent_rate = a * rate;
+	} else if (hwdata->num >= 6) {
+		/* determine the closest integer divider */
+		a = DIV_ROUND_CLOSEST(*parent_rate, rate);
+		if (a < SI5351_MULTISYNTH_A_MIN)
+			a = SI5351_MULTISYNTH_A_MIN;
+		if (a > SI5351_MULTISYNTH67_A_MAX)
+			a = SI5351_MULTISYNTH67_A_MAX;
+
+		b = 0;
+		c = 1;
 	} else {
 		unsigned long rfrac, denom;
 
@@ -692,9 +703,7 @@ static long si5351_msynth_round_rate(struct clk_hw *hw, unsigned long rate,
 		a = *parent_rate / rate;
 		if (a < SI5351_MULTISYNTH_A_MIN)
 			a = SI5351_MULTISYNTH_A_MIN;
-		if (hwdata->num >= 6 && a > SI5351_MULTISYNTH67_A_MAX)
-			a = SI5351_MULTISYNTH67_A_MAX;
-		else if (a > SI5351_MULTISYNTH_A_MAX)
+		if (a > SI5351_MULTISYNTH_A_MAX)
 			a = SI5351_MULTISYNTH_A_MAX;
 
 		/* find best approximation for b/c = fVCO mod fOUT */
@@ -723,6 +732,10 @@ static long si5351_msynth_round_rate(struct clk_hw *hw, unsigned long rate,
 		hwdata->params.p3 = 1;
 		hwdata->params.p2 = 0;
 		hwdata->params.p1 = 0;
+	} else if (hwdata->num >= 6) {
+		hwdata->params.p3 = 0;
+		hwdata->params.p2 = 0;
+		hwdata->params.p1 = a;
 	} else {
 		hwdata->params.p3  = c;
 		hwdata->params.p2  = (128 * b) % c;
@@ -1337,23 +1350,12 @@ static int si5351_i2c_probe(struct i2c_client *client,
 		return PTR_ERR(drvdata->regmap);
 	}
 
-	/* ensure that the device is ready */
-	if (si5351_reg_read(drvdata, SI5351_DEVICE_STATUS) &
-			SI5351_STATUS_SYS_INIT) {
-		dev_dbg(&client->dev, "device is in initialization mode");
-		return -EPROBE_DEFER;
-	}
-
-	/* disable interrupts */
+	/* Disable interrupts */
 	si5351_reg_write(drvdata, SI5351_INTERRUPT_MASK, 0xf0);
-
-	/* ensure pll select is on XTAL for Si5351A/B */
+	/* Ensure pll select is on XTAL for Si5351A/B */
 	if (drvdata->variant != SI5351_VARIANT_C)
 		si5351_set_bits(drvdata, SI5351_PLL_INPUT_SOURCE,
 				SI5351_PLLA_SOURCE | SI5351_PLLB_SOURCE, 0);
-
-	/* disable all clock outputs */
-	si5351_reg_write(drvdata, SI5351_OUTPUT_ENABLE_CTRL, 0xff);
 
 	/* setup clock configuration */
 	for (n = 0; n < 2; n++) {
@@ -1403,9 +1405,6 @@ static int si5351_i2c_probe(struct i2c_client *client,
 			return ret;
 		}
 	}
-
-	/* reset plla and pllb */
-	si5351_reg_write(drvdata, SI5351_PLL_RESET, 0xac);
 
 	/* register xtal input clock gate */
 	memset(&init, 0, sizeof(init));
@@ -1544,6 +1543,8 @@ static int si5351_i2c_probe(struct i2c_client *client,
 		init.name = si5351_clkout_names[n];
 		init.ops = &si5351_clkout_ops;
 		init.flags = 0;
+		if (pdata->clkout[n].clkout_src == SI5351_CLKOUT_SRC_MSYNTH_N)
+			init.flags |= CLK_SET_RATE_PARENT;
 		init.parent_names = parent_names;
 		init.num_parents = num_parents;
 		clk = devm_clk_register(&client->dev, &drvdata->clkout[n].hw);
