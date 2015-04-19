@@ -30,6 +30,7 @@
 #include <linux/regmap.h>
 #include <linux/slab.h>
 #include <linux/string.h>
+#include <linux/workqueue.h>
 #include <asm/div64.h>
 
 #include "clk-si5351.h"
@@ -43,11 +44,20 @@ struct si5351_parameters {
 	int		valid;
 };
 
+enum si5351_work_request {
+	SI5351_WORK_RQ_CLK_ENABLE = 0,
+	SI5351_WORK_RQ_CLK_DISABLE
+};
+
 struct si5351_hw_data {
 	struct clk_hw			hw;
 	struct si5351_driver_data	*drvdata;
 	struct si5351_parameters	params;
 	unsigned char			num;
+
+	struct workqueue_struct *wq;
+	struct work_struct work;
+	enum si5351_work_request work_rq;
 };
 
 struct si5351_driver_data {
@@ -910,9 +920,9 @@ static int si5351_clkout_prepare(struct clk_hw *hw)
 	si5351_set_bits(hwdata->drvdata, SI5351_PLL_RESET,
 			SI5351_PLL_RESET_B, SI5351_PLL_RESET_B);
 
+	dev_dbg(&hwdata->drvdata->client->dev, "%s - %s\n",
+			__func__, __clk_get_name(hwdata->hw.clk));
 
-	si5351_set_bits(hwdata->drvdata, SI5351_OUTPUT_ENABLE_CTRL,
-			(1 << hwdata->num), 0);
 	return 0;
 }
 
@@ -923,8 +933,55 @@ static void si5351_clkout_unprepare(struct clk_hw *hw)
 
 	si5351_set_bits(hwdata->drvdata, SI5351_CLK0_CTRL + hwdata->num,
 			SI5351_CLK_POWERDOWN, SI5351_CLK_POWERDOWN);
-	si5351_set_bits(hwdata->drvdata, SI5351_OUTPUT_ENABLE_CTRL,
-			(1 << hwdata->num), (1 << hwdata->num));
+
+	dev_dbg(&hwdata->drvdata->client->dev, "%s - %s\n",
+			__func__, __clk_get_name(hwdata->hw.clk));
+}
+
+static void si5351_work(struct work_struct *work)
+{
+	struct si5351_hw_data *hwdata =
+		container_of(work, struct si5351_hw_data, work);
+
+	switch (hwdata->work_rq) { // TODO: mutex
+	case SI5351_WORK_RQ_CLK_DISABLE:
+		si5351_set_bits(hwdata->drvdata, SI5351_OUTPUT_ENABLE_CTRL,
+				(1 << hwdata->num), (1 << hwdata->num));
+		dev_dbg(&hwdata->drvdata->client->dev, "%s - %s: disabled\n",
+			__func__, __clk_get_name(hwdata->hw.clk));
+		break;
+	case SI5351_WORK_RQ_CLK_ENABLE:
+		si5351_set_bits(hwdata->drvdata, SI5351_OUTPUT_ENABLE_CTRL,
+				(1 << hwdata->num), 0);
+		dev_dbg(&hwdata->drvdata->client->dev, "%s - %s: enabled\n",
+			__func__, __clk_get_name(hwdata->hw.clk));
+		break;
+	 default:
+		 dev_warn(&hwdata->drvdata->client->dev,
+				 "unhandled work request: %d\n",
+				 hwdata->work_rq);
+		 break;
+	}
+}
+
+static int si5351_clkout_enable(struct clk_hw *hw)
+{
+	struct si5351_hw_data *hwdata =
+		container_of(hw, struct si5351_hw_data, hw);
+
+	hwdata->work_rq = SI5351_WORK_RQ_CLK_ENABLE;
+	queue_work(hwdata->wq, &hwdata->work);
+
+	return 0;
+}
+
+static void si5351_clkout_disable(struct clk_hw *hw)
+{
+	struct si5351_hw_data *hwdata =
+		container_of(hw, struct si5351_hw_data, hw);
+
+	hwdata->work_rq = SI5351_WORK_RQ_CLK_DISABLE;
+	queue_work(hwdata->wq, &hwdata->work);
 }
 
 static u8 si5351_clkout_get_parent(struct clk_hw *hw)
@@ -1093,9 +1150,9 @@ static int si5351_clkout_set_rate(struct clk_hw *hw, unsigned long rate,
 				rdiv << SI5351_OUTPUT_CLK_DIV_SHIFT);
 	}
 
-	/* powerup clkout */
-	si5351_set_bits(hwdata->drvdata, SI5351_CLK0_CTRL + hwdata->num,
-			SI5351_CLK_POWERDOWN, 0);
+//	/* powerup clkout */
+//	si5351_set_bits(hwdata->drvdata, SI5351_CLK0_CTRL + hwdata->num,
+//			SI5351_CLK_POWERDOWN, 0);
 
 	dev_dbg(&hwdata->drvdata->client->dev,
 		"%s - %s: rdiv = %u, parent_rate = %lu, rate = %lu\n",
@@ -1108,6 +1165,8 @@ static int si5351_clkout_set_rate(struct clk_hw *hw, unsigned long rate,
 static const struct clk_ops si5351_clkout_ops = {
 	.prepare = si5351_clkout_prepare,
 	.unprepare = si5351_clkout_unprepare,
+	.enable = si5351_clkout_enable,
+	.disable = si5351_clkout_disable,
 	.set_parent = si5351_clkout_set_parent,
 	.get_parent = si5351_clkout_get_parent,
 	.recalc_rate = si5351_clkout_recalc_rate,
@@ -1560,6 +1619,16 @@ static int si5351_i2c_probe(struct i2c_client *client,
 		}
 		drvdata->onecell.clks[n] = clk;
 
+		/* Setup work queue */
+		drvdata->clkout[n].wq =
+			create_singlethread_workqueue(init.name);
+		if (drvdata->clkout[n].wq == NULL) {
+			dev_err(&client->dev, "unable to init %s work queue\n",
+				init.name);
+			return -ENOMEM;
+		}
+		INIT_WORK(&drvdata->clkout[n].work, si5351_work);
+
 		/* set initial clkout rate */
 		if (pdata->clkout[n].rate != 0) {
 			int ret;
@@ -1581,6 +1650,15 @@ static int si5351_i2c_probe(struct i2c_client *client,
 	return 0;
 }
 
+static int si5351_i2c_remove(struct i2c_client *client)
+{
+	//struct si5351_driver_data *drvdata = i2c_get_clientdata(client);
+
+	//TODO: destroy_workqueue(drvdata->wq);
+
+	return 0;
+}
+
 static const struct i2c_device_id si5351_i2c_ids[] = {
 	{ "si5351a", SI5351_VARIANT_A },
 	{ "si5351a-msop", SI5351_VARIANT_A3 },
@@ -1596,6 +1674,7 @@ static struct i2c_driver si5351_driver = {
 		.of_match_table = of_match_ptr(si5351_dt_ids),
 	},
 	.probe = si5351_i2c_probe,
+	.remove = si5351_i2c_remove,
 	.id_table = si5351_i2c_ids,
 };
 module_i2c_driver(si5351_driver);

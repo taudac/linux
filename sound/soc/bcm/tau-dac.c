@@ -121,10 +121,16 @@ static int tau_dac_clk_prepare(struct snd_soc_card_drvdata *drvdata)
 
 static void tau_dac_clk_disable(struct snd_soc_card_drvdata *drvdata)
 {
+	int i;
+
 	if (drvdata->mclk_enabled) {
 		clk_disable(drvdata->mux_mclk);
 		drvdata->mclk_enabled = false;
 	}
+
+	/* disable i2s clocks */
+	for (i = 0; i < NUM_I2S_CLOCKS; i++)
+		clk_disable(drvdata->i2s_clk[i]);
 }
 
 static int tau_dac_clk_enable(struct snd_soc_card_drvdata *drvdata,
@@ -317,6 +323,15 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 	if (ret < 0) {
 		dev_err(rtd->card->dev, "Preparing clocks failed: %d\n", ret);
 		return ret;
+	}
+
+	/* enable i2s clocks */
+	for (i = 0; i < NUM_I2S_CLOCKS; i++) {
+		ret = clk_enable(drvdata->i2s_clk[i]);
+		if (ret < 0) {
+			dev_err(rtd->card->dev, "Enabling i2s clocks failed: %d\n", ret);
+			return ret;
+		}
 	}
 
 	return 0;
