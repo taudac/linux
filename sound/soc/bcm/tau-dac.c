@@ -84,6 +84,10 @@ static int tau_dac_clk_init(struct snd_soc_card_drvdata *drvdata)
 			return ret;
 	}
 
+	ret = clk_prepare(drvdata->mux_mclk);
+	if (ret < 0)
+		return ret;
+
 	return 0;
 }
 
@@ -303,15 +307,15 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* enable clocks*/
-	ret = tau_dac_clk_prepare(drvdata);
-	if (ret < 0) {
-		dev_err(rtd->card->dev, "Preparing clocks failed: %d\n", ret);
-		return ret;
-	}
-
 	ret = tau_dac_clk_enable(drvdata, mclk_rate, bclk_rate, lrclk_rate);
 	if (ret < 0) {
 		dev_err(rtd->card->dev, "Starting clocks failed: %d\n", ret);
+		return ret;
+	}
+
+	ret = tau_dac_clk_prepare(drvdata);
+	if (ret < 0) {
+		dev_err(rtd->card->dev, "Preparing clocks failed: %d\n", ret);
 		return ret;
 	}
 
