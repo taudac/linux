@@ -905,6 +905,12 @@ static int si5351_clkout_prepare(struct clk_hw *hw)
 
 	si5351_set_bits(hwdata->drvdata, SI5351_CLK0_CTRL + hwdata->num,
 			SI5351_CLK_POWERDOWN, 0);
+
+	// HACK: reset pllb
+	si5351_set_bits(hwdata->drvdata, SI5351_PLL_RESET,
+			SI5351_PLL_RESET_B, SI5351_PLL_RESET_B);
+
+
 	si5351_set_bits(hwdata->drvdata, SI5351_OUTPUT_ENABLE_CTRL,
 			(1 << hwdata->num), 0);
 	return 0;
