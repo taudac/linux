@@ -29,12 +29,12 @@
 #include "../codecs/wm8741.h"
 
 enum {
-	BCLK_CPU,
+//	BCLK_CPU,
 	BCLK_DACL,
 	BCLK_DACR,
 	LRCLK_CPU,
 	LRCLK_DACL,
-	LRCLK_DACR,
+//	LRCLK_DACR,
 	NUM_I2S_CLOCKS
 };
 
@@ -154,9 +154,9 @@ static int tau_dac_clk_enable(struct snd_soc_card_drvdata *drvdata,
 	drvdata->mclk_enabled = true;
 	msleep(2);
 
-	ret = clk_set_rate(drvdata->i2s_clk[BCLK_CPU], bclk_rate);
-	if (ret < 0)
-		return ret;
+//	ret = clk_set_rate(drvdata->i2s_clk[BCLK_CPU], bclk_rate);
+//	if (ret < 0)
+//		return ret;
 
 	ret = clk_set_rate(drvdata->i2s_clk[BCLK_DACL], bclk_rate);
 	if (ret < 0)
@@ -174,9 +174,9 @@ static int tau_dac_clk_enable(struct snd_soc_card_drvdata *drvdata,
 	if (ret < 0)
 		return ret;
 
-	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_DACR], lrclk_rate);
-	if (ret < 0)
-		return ret;
+//	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_DACR], lrclk_rate);
+//	if (ret < 0)
+//		return ret;
 
 	return 0;
 }
@@ -404,9 +404,9 @@ static int tau_dac_set_clk(struct device *dev,
 	if (IS_ERR(drvdata->mux_mclk))
 		return -EINVAL;
 		
-	drvdata->i2s_clk[BCLK_CPU] = devm_clk_get(dev, "bclk-cpu");
-	if (IS_ERR(drvdata->i2s_clk[BCLK_CPU]))
-		return -EPROBE_DEFER;
+//	drvdata->i2s_clk[BCLK_CPU] = devm_clk_get(dev, "bclk-cpu");
+//	if (IS_ERR(drvdata->i2s_clk[BCLK_CPU]))
+//		return -EPROBE_DEFER;
 
 	drvdata->i2s_clk[BCLK_DACL] = devm_clk_get(dev, "bclk-dacl");
 	if (IS_ERR(drvdata->i2s_clk[BCLK_DACL]))
@@ -424,9 +424,9 @@ static int tau_dac_set_clk(struct device *dev,
 	if (IS_ERR(drvdata->i2s_clk[LRCLK_DACL]))
 		return -EPROBE_DEFER;
 
-	drvdata->i2s_clk[LRCLK_DACR] = devm_clk_get(dev, "lrclk-dacr");
-	if (IS_ERR(drvdata->i2s_clk[LRCLK_DACR]))
-		return -EPROBE_DEFER;
+//	drvdata->i2s_clk[LRCLK_DACR] = devm_clk_get(dev, "lrclk-dacr");
+//	if (IS_ERR(drvdata->i2s_clk[LRCLK_DACR]))
+//		return -EPROBE_DEFER;
 
 	return 0;
 }

@@ -123,16 +123,12 @@
 
 				clkout6 {
 					reg = <6>;
-					silabs,disable-state = <2>;					
-					silabs,clock-source = <0>;
-					silabs,multisynth-source = <1>;
+					silabs,disable-state = <0>;
 				};
 
 				clkout7 {
 					reg = <7>;
-					silabs,disable-state = <2>;				
-					silabs,clock-source = <0>;
-					silabs,multisynth-source = <1>;
+					silabs,disable-state = <0>;
 				};
 			};
 		};
@@ -149,21 +145,21 @@
 			clocks      = <&osc24>,
 				      <&osc22>,
 				      <&mux_mclk>,
-			              <&si5351 7>, 
+//			              <&si5351 7>, 
 			              <&si5351 3>, 
 			              <&si5351 5>,
 			              <&si5351 0>,
-			              <&si5351 2>, 
-			              <&si5351 6>;
+			              <&si5351 2>; 
+//			              <&si5351 6>;
 			clock-names = "mclk-24M",
 				      "mclk-22M",
 				      "mux-mclk",
-			              "bclk-cpu",  
+//			              "bclk-cpu",  
 			              "bclk-dacl",  
 			              "bclk-dacr",
 			              "lrclk-cpu", 
-			              "lrclk-dacl", 
-			              "lrclk-dacr";
+			              "lrclk-dacl"; 
+//			              "lrclk-dacr";
 			
 			status = "okay";
 		};
