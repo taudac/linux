@@ -898,6 +898,18 @@ static int _si5351_clkout_set_disable_state(
 	return 0;
 }
 
+static int _si5351_clkout_set_invert_mode(
+	struct si5351_driver_data *drvdata, int num,
+	bool invert)
+{
+	u8 val = invert ? SI5351_CLK_INVERT : 0;
+
+	si5351_set_bits(drvdata, SI5351_CLK0_CTRL + num,
+			SI5351_CLK_INVERT, val);
+
+	return 0;
+}
+
 static int si5351_clkout_prepare(struct clk_hw *hw)
 {
 	struct si5351_hw_data *hwdata =
@@ -1305,6 +1317,9 @@ static int si5351_dt_parse(struct i2c_client *client,
 
 		pdata->clkout[num].pll_master =
 			of_property_read_bool(child, "silabs,pll-master");
+
+		pdata->clkout[num].invert =
+			of_property_read_bool(child, "silabs,invert");
 	}
 	client->dev.platform_data = pdata;
 
@@ -1406,6 +1421,15 @@ static int si5351_i2c_probe(struct i2c_client *client,
 		if (ret) {
 			dev_err(&client->dev,
 				"failed set disable state of clkout%d to %d\n",
+				n, pdata->clkout[n].disable_state);
+			return ret;
+		}
+
+		ret = _si5351_clkout_set_invert_mode(drvdata, n,
+						pdata->clkout[n].invert);
+		if (ret) {
+			dev_err(&client->dev,
+				"failed set invert mode of clkout%d to %d\n",
 				n, pdata->clkout[n].disable_state);
 			return ret;
 		}
