@@ -154,10 +154,6 @@ static int tau_dac_clk_enable(struct snd_soc_card_drvdata *drvdata,
 	drvdata->mclk_enabled = true;
 	msleep(2);
 
-	ret = clk_set_rate(drvdata->i2s_clk[BCLK_CPU], bclk_rate);
-	if (ret < 0)
-		return ret;
-
 	ret = clk_set_rate(drvdata->i2s_clk[BCLK_DACL], bclk_rate);
 	if (ret < 0)
 		return ret;
@@ -166,15 +162,19 @@ static int tau_dac_clk_enable(struct snd_soc_card_drvdata *drvdata,
 	if (ret < 0)
 		return ret;
 
-	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_CPU], lrclk_rate);
-	if (ret < 0)
-		return ret;
-
 	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_DACL], lrclk_rate);
 	if (ret < 0)
 		return ret;
 
 	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_DACR], lrclk_rate);
+	if (ret < 0)
+		return ret;
+		
+	ret = clk_set_rate(drvdata->i2s_clk[BCLK_CPU], bclk_rate);
+	if (ret < 0)
+		return ret;
+		
+	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_CPU], lrclk_rate);
 	if (ret < 0)
 		return ret;
 
