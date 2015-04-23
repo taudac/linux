@@ -132,6 +132,7 @@
 					silabs,disable-state = <2>;					
 					silabs,clock-source = <0>;
 					silabs,multisynth-source = <1>;
+					silabs,drive-strength = <2>;
 				};
 
 				clkout7 {
@@ -139,6 +140,8 @@
 					silabs,disable-state = <2>;				
 					silabs,clock-source = <0>;
 					silabs,multisynth-source = <1>;
+					silabs,drive-strength = <2>;
+					silabs,invert;
 				};
 			};
 		};
