@@ -87,6 +87,7 @@ enum si5351_disable_state {
  * @multisynth_src: multisynth source clock
  * @clkout_src: clkout source clock
  * @pll_master: if true, clkout can also change pll rate
+ * @ms_master: if true, clkout can also change multisynth rate
  * @invert: if true, clkout is inverted
  * @drive: output drive strength
  * @rate: initial clkout rate, or default if 0
@@ -97,6 +98,7 @@ struct si5351_clkout_config {
 	enum si5351_drive_strength drive;
 	enum si5351_disable_state disable_state;
 	bool pll_master;
+	bool ms_master;
 	bool invert;
 	unsigned long rate;
 };
