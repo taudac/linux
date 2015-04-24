@@ -200,34 +200,14 @@ static struct snd_soc_dai_link_component tau_dac_codecs[] = {
  */
 static int tau_dac_init(struct snd_soc_pcm_runtime *rtd)
 {
-	int ret, i;
-	int num_codecs = rtd->num_codecs;
-	struct snd_soc_dai **codec_dais = rtd->codec_dais;
+	int ret;
 	struct snd_soc_card_drvdata *drvdata =
 			snd_soc_card_get_drvdata(rtd->card);
-
-	unsigned int mclk_freq = 22579200;
-	//unsigned int mclk_freq = 24576000;
 
 	ret = tau_dac_clk_init(drvdata);
 	if (ret < 0) {
 		dev_err(rtd->card->dev, "Initializing clocks failed\n");
 		return ret;
-	}
-
-	/*  HACK: Due to the codec driver implementation, we have to call
-	 *  set_sysclk here. However, we don't yet know which clock to set.
-	 *  We need to know the sampling rate to select the master clock.
-	 *  TODO: Refactor the codec driver to address this issue.
-	 *  eg: move wm8741->sysclk check from startup to hw_params,
-	 *  add constraints_all.
-	 */
-	for (i = 0; i < num_codecs; i++) {
-		/* set codecs sysclk */
-		ret = snd_soc_dai_set_sysclk(codec_dais[i],
-				WM8741_SYSCLK, mclk_freq, SND_SOC_CLOCK_IN);
-		if (ret < 0)
-			 return ret;
 	}
 
 	return 0;
