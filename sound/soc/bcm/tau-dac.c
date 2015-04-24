@@ -242,6 +242,20 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 	unsigned int mclk_rate, bclk_rate;
 	unsigned int lrclk_rate = params_rate(params);
 	int width = params_width(params);
+	unsigned int fmt = SND_SOC_DAIFMT_I2S;
+
+	switch (width) {
+	case 16:
+		fmt |= SND_SOC_DAIFMT_IB_NF;
+		break;
+	case 32:
+		fmt |= SND_SOC_DAIFMT_NB_NF;
+		break;
+	default:
+		dev_err(rtd->card->dev, "Bit depth not supported: %d",
+				width);
+		return -EINVAL;
+	}
 
 	switch (lrclk_rate) {
 	case 44100:
@@ -256,7 +270,8 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 		mclk_rate = 24576000;
 		break;
 	default:
-		dev_err(rtd->card->dev, "Rate not supported: %d", lrclk_rate);
+		dev_err(rtd->card->dev, "Sample rate not supported: %d",
+				lrclk_rate);
 		return -EINVAL;
 	}
 
@@ -267,8 +282,7 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 	if (ret < 0)
 		return ret;
 
-	ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_I2S |
-			SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM);
+	ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBM_CFM | fmt);
 	if (ret < 0)
 		return ret;
 
@@ -280,8 +294,8 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 			 return ret;
 
 		/* set codec DAI configuration */
-		ret = snd_soc_dai_set_fmt(codec_dais[i], SND_SOC_DAIFMT_I2S |
-				SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS);
+		ret = snd_soc_dai_set_fmt(codec_dais[i],
+				SND_SOC_DAIFMT_CBS_CFS | fmt);
 		if (ret < 0)
 			return ret;
 	}
