@@ -1318,9 +1318,6 @@ static int si5351_dt_parse(struct i2c_client *client,
 		pdata->clkout[num].pll_master =
 			of_property_read_bool(child, "silabs,pll-master");
 
-		pdata->clkout[num].ms_master =
-			of_property_read_bool(child, "silabs,ms-master");
-
 		pdata->clkout[num].invert =
 			of_property_read_bool(child, "silabs,invert");
 	}
@@ -1575,7 +1572,7 @@ static int si5351_i2c_probe(struct i2c_client *client,
 		init.name = si5351_clkout_names[n];
 		init.ops = &si5351_clkout_ops;
 		init.flags = 0;
-		if (pdata->clkout[n].ms_master)
+		if (pdata->clkout[n].clkout_src == SI5351_CLKOUT_SRC_MSYNTH_N)
 			init.flags |= CLK_SET_RATE_PARENT;
 		init.parent_names = parent_names;
 		init.num_parents = num_parents;
