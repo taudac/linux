@@ -31,7 +31,7 @@
 enum {
 	BCLK_DACR,
 	BCLK_DACL,
-	BCLK_CPU,
+	BCLK_SOC,
 	NUM_BCLKS
 };
 
@@ -375,8 +375,8 @@ static int tau_dac_set_clk(struct device *dev,
 	if (IS_ERR(drvdata->bclk[BCLK_DACL]))
 		return -EPROBE_DEFER;
 
-	drvdata->bclk[BCLK_CPU] = devm_clk_get(dev, "bclk-cpu");
-	if (IS_ERR(drvdata->bclk[BCLK_CPU]))
+	drvdata->bclk[BCLK_SOC] = devm_clk_get(dev, "bclk-soc");
+	if (IS_ERR(drvdata->bclk[BCLK_SOC]))
 		return -EPROBE_DEFER;
 
 	return 0;
