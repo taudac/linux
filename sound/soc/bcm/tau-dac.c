@@ -28,13 +28,6 @@
 
 #include "../codecs/wm8741.h"
 
-enum {
-	BCLK_DACR,
-	BCLK_DACL,
-	BCLK_CPU,
-	NUM_BCLKS
-};
-
 struct snd_soc_card_drvdata {
 	struct clk *mclk24;
 	struct clk *mclk22;
@@ -47,6 +40,13 @@ struct snd_soc_card_drvdata {
 /*
  * clocks
  */
+enum {
+	BCLK_DACR,
+	BCLK_DACL,
+	BCLK_CPU,
+	NUM_BCLKS
+};
+
 static int tau_dac_clk_init(struct snd_soc_card_drvdata *drvdata)
 {
 	int ret, i;
@@ -266,7 +266,7 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 		ret = snd_soc_dai_set_sysclk(codec_dais[i],
 				WM8741_SYSCLK, mclk_rate, SND_SOC_CLOCK_IN);
 		if (ret < 0)
-			 return ret;
+			return ret;
 
 		/* set codec DAI configuration */
 		ret = snd_soc_dai_set_fmt(codec_dais[i],
@@ -295,8 +295,7 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 		return ret;
 	}
 
-	dev_dbg(rtd->card->dev, "%s: mclk = %u, bclk = %u, lrclk = %u, "
-			"width = %d, fmt = 0x%x",
+	dev_dbg(rtd->card->dev, "%s: mclk = %u, bclk = %u, lrclk = %u, width = %d, fmt = 0x%x",
 			__func__, mclk_rate, bclk_rate, lrclk_rate, width, fmt);
 
 	return 0;
@@ -438,8 +437,8 @@ static int tau_dac_probe(struct platform_device *pdev)
 	ret = snd_soc_register_card(&tau_dac_card);
 	if (ret != 0) {
 		if (ret != -EPROBE_DEFER)
-			dev_err(&pdev->dev, "snd_soc_register_card() failed: "
-					"%d\n", ret);
+			dev_err(&pdev->dev, "snd_soc_register_card() failed: %d\n",
+					ret);
 		return ret;
 	}
 
