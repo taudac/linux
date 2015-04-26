@@ -313,6 +313,10 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 		return ret;
 	}
 
+	dev_dbg(rtd->card->dev, "%s: mclk = %u, bclk = %u, lrclk = %u, "
+			"width = %d, fmt = 0x%x",
+			__func__, mclk_rate, bclk_rate, lrclk_rate, width, fmt);
+
 	return 0;
 }
 
