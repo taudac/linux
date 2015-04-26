@@ -222,6 +222,8 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 	int width = params_width(params);
 	unsigned int fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF;
 
+	u16 osr;
+
 	switch (lrclk_rate) {
 	case 44100:
 	case 88200:
@@ -251,8 +253,16 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 	if (ret < 0)
 		return ret;
 
+	/* calculate oversampling rate */
+	if (lrclk_rate <= 48000)
+		osr = 0; // TODO: define WM8741_OSR_LOW etc. in wm8741.h
+	else if (lrclk_rate <= 96000)
+		osr = 1;
+	else
+		osr = 2;
+
 	for (i = 0; i < num_codecs; i++) {
-		/* set codecs sysclk */
+		/* set codec sysclk */
 		ret = snd_soc_dai_set_sysclk(codec_dais[i],
 				WM8741_SYSCLK, mclk_rate, SND_SOC_CLOCK_IN);
 		if (ret < 0)
@@ -261,6 +271,13 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 		/* set codec DAI configuration */
 		ret = snd_soc_dai_set_fmt(codec_dais[i],
 				SND_SOC_DAIFMT_CBS_CFS | fmt);
+		if (ret < 0)
+			return ret;
+
+		/* set codec oversampling rate */
+		ret = snd_soc_update_bits(codec_dais[i]->codec,
+				WM8741_MODE_CONTROL_1,
+				WM8741_OSR_MASK, osr << WM8741_OSR_SHIFT);
 		if (ret < 0)
 			return ret;
 	}
