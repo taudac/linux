@@ -29,13 +29,10 @@
 #include "../codecs/wm8741.h"
 
 enum {
-//	BCLK_CPU,
-	BCLK_DACL,
 	BCLK_DACR,
-	LRCLK_CPU,
-	LRCLK_DACL,
-//	LRCLK_DACR,
-	NUM_I2S_CLOCKS
+	BCLK_DACL,
+	BCLK_CPU,
+	NUM_BCLKS
 };
 
 struct snd_soc_card_drvdata {
@@ -43,8 +40,8 @@ struct snd_soc_card_drvdata {
 	struct clk *mclk22;
 	struct clk *mux_mclk;
 	bool mclk_enabled;
-	struct clk *i2s_clk[NUM_I2S_CLOCKS];
-	bool i2s_clk_prepared[NUM_I2S_CLOCKS];
+	struct clk *bclk[NUM_BCLKS];
+	bool bclk_prepared[NUM_BCLKS];
 };
 
 /*
@@ -58,8 +55,8 @@ static int tau_dac_clk_init(struct snd_soc_card_drvdata *drvdata)
 	const int pll_clkin_ratio = 31;
 	const int clkin_ms_ratio = 8;
 
-	for (i = 0; i < NUM_I2S_CLOCKS; i++) {
-		ms = clk_get_parent(drvdata->i2s_clk[i]);
+	for (i = 0; i < NUM_BCLKS; i++) {
+		ms = clk_get_parent(drvdata->bclk[i]);
 		if (IS_ERR(ms))
 			return -EINVAL;
 
@@ -95,10 +92,10 @@ static void tau_dac_clk_unprepare(struct snd_soc_card_drvdata *drvdata)
 {
 	int i;
 
-	for (i = 0; i < NUM_I2S_CLOCKS; i++) {
-		if (drvdata->i2s_clk_prepared[i]) {
-			clk_unprepare(drvdata->i2s_clk[i]);
-			drvdata->i2s_clk_prepared[i] = false;
+	for (i = 0; i < NUM_BCLKS; i++) {
+		if (drvdata->bclk_prepared[i]) {
+			clk_unprepare(drvdata->bclk[i]);
+			drvdata->bclk_prepared[i] = false;
 		}
 	}
 }
@@ -107,12 +104,12 @@ static int tau_dac_clk_prepare(struct snd_soc_card_drvdata *drvdata)
 {
 	int ret, i;
 
-	for (i = 0; i < NUM_I2S_CLOCKS; i++) {
-		if (!drvdata->i2s_clk_prepared[i]) {
-			ret = clk_prepare(drvdata->i2s_clk[i]);
+	for (i = 0; i < NUM_BCLKS; i++) {
+		if (!drvdata->bclk_prepared[i]) {
+			ret = clk_prepare(drvdata->bclk[i]);
 			if (ret != 0)
 				return ret;
-			drvdata->i2s_clk_prepared[i] = true;
+			drvdata->bclk_prepared[i] = true;
 		}
 	}
 
@@ -131,7 +128,7 @@ static int tau_dac_clk_enable(struct snd_soc_card_drvdata *drvdata,
 		unsigned long mclk_rate, unsigned long bclk_rate,
 		unsigned long lrclk_rate)
 {
-	int ret;
+	int ret, i;
 
 	switch (mclk_rate) {
 	case 22579200:
@@ -143,7 +140,6 @@ static int tau_dac_clk_enable(struct snd_soc_card_drvdata *drvdata,
 	default:
 		return -EINVAL;
 	}
-
 	if (ret < 0)
 		return ret;
 
@@ -154,29 +150,11 @@ static int tau_dac_clk_enable(struct snd_soc_card_drvdata *drvdata,
 	drvdata->mclk_enabled = true;
 	msleep(2);
 
-//	ret = clk_set_rate(drvdata->i2s_clk[BCLK_CPU], bclk_rate);
-//	if (ret < 0)
-//		return ret;
-
-	ret = clk_set_rate(drvdata->i2s_clk[BCLK_DACL], bclk_rate);
-	if (ret < 0)
-		return ret;
-
-	ret = clk_set_rate(drvdata->i2s_clk[BCLK_DACR], bclk_rate);
-	if (ret < 0)
-		return ret;
-
-	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_DACL], lrclk_rate);
-	if (ret < 0)
-		return ret;
-
-	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_CPU], lrclk_rate);
-	if (ret < 0)
-		return ret;
-
-//	ret = clk_set_rate(drvdata->i2s_clk[LRCLK_DACR], lrclk_rate);
-//	if (ret < 0)
-//		return ret;
+	for (i = 0; i < NUM_BCLKS; i++) {
+		ret = clk_set_rate(drvdata->bclk[i], bclk_rate);
+		if (ret < 0)
+			return ret;
+	}
 
 	return 0;
 }
@@ -242,20 +220,7 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 	unsigned int mclk_rate, bclk_rate;
 	unsigned int lrclk_rate = params_rate(params);
 	int width = params_width(params);
-	unsigned int fmt = SND_SOC_DAIFMT_I2S;
-
-	switch (width) {
-	case 16:
-		fmt |= SND_SOC_DAIFMT_IB_NF;
-		break;
-	case 32:
-		fmt |= SND_SOC_DAIFMT_NB_NF;
-		break;
-	default:
-		dev_err(rtd->card->dev, "Bit depth not supported: %d",
-				width);
-		return -EINVAL;
-	}
+	unsigned int fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF;
 
 	switch (lrclk_rate) {
 	case 44100:
@@ -282,7 +247,7 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 	if (ret < 0)
 		return ret;
 
-	ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBM_CFM | fmt);
+	ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBM_CFS | fmt);
 	if (ret < 0)
 		return ret;
 
@@ -401,30 +366,18 @@ static int tau_dac_set_clk(struct device *dev,
 	drvdata->mux_mclk = devm_clk_get(dev, "mux-mclk");
 	if (IS_ERR(drvdata->mux_mclk))
 		return -EINVAL;
-		
-//	drvdata->i2s_clk[BCLK_CPU] = devm_clk_get(dev, "bclk-cpu");
-//	if (IS_ERR(drvdata->i2s_clk[BCLK_CPU]))
-//		return -EPROBE_DEFER;
 
-	drvdata->i2s_clk[BCLK_DACL] = devm_clk_get(dev, "bclk-dacl");
-	if (IS_ERR(drvdata->i2s_clk[BCLK_DACL]))
+	drvdata->bclk[BCLK_DACR] = devm_clk_get(dev, "bclk-dacr");
+	if (IS_ERR(drvdata->bclk[BCLK_DACR]))
 		return -EPROBE_DEFER;
 
-	drvdata->i2s_clk[BCLK_DACR] = devm_clk_get(dev, "bclk-dacr");
-	if (IS_ERR(drvdata->i2s_clk[BCLK_DACR]))
+	drvdata->bclk[BCLK_DACL] = devm_clk_get(dev, "bclk-dacl");
+	if (IS_ERR(drvdata->bclk[BCLK_DACL]))
 		return -EPROBE_DEFER;
 
-	drvdata->i2s_clk[LRCLK_CPU] = devm_clk_get(dev, "lrclk-cpu");
-	if (IS_ERR(drvdata->i2s_clk[LRCLK_CPU]))
+	drvdata->bclk[BCLK_CPU] = devm_clk_get(dev, "bclk-cpu");
+	if (IS_ERR(drvdata->bclk[BCLK_CPU]))
 		return -EPROBE_DEFER;
-
-	drvdata->i2s_clk[LRCLK_DACL] = devm_clk_get(dev, "lrclk-dacl");
-	if (IS_ERR(drvdata->i2s_clk[LRCLK_DACL]))
-		return -EPROBE_DEFER;
-
-//	drvdata->i2s_clk[LRCLK_DACR] = devm_clk_get(dev, "lrclk-dacr");
-//	if (IS_ERR(drvdata->i2s_clk[LRCLK_DACR]))
-//		return -EPROBE_DEFER;
 
 	return 0;
 }
