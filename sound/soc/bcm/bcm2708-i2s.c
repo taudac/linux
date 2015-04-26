@@ -644,6 +644,10 @@ static int bcm2708_i2s_hw_params(struct snd_pcm_substream *substream,
 	/* Clear FIFOs */
 	bcm2708_i2s_clear_fifos(dev, true, true);
 
+	dev_dbg(dev->dev, "%s: bclk_ratio = %d, data_length = %d, "
+			"format = 0x%08x, mode = 0x%08x\n",
+			__func__, bclk_ratio, data_length, format, mode);
+
 	return 0;
 }
 
