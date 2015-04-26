@@ -154,7 +154,7 @@
 				      "mux-mclk",
 			              "bclk-dacr",
 			              "bclk-dacl",
-			              "bclk-soc";
+			              "bclk-cpu";
 			
 			status = "okay";
 		};
