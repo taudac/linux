@@ -28,6 +28,13 @@
 
 #include "../codecs/wm8741.h"
 
+enum {
+	BCLK_DACR,
+	BCLK_DACL,
+	BCLK_CPU,
+	NUM_BCLKS
+};
+
 struct snd_soc_card_drvdata {
 	struct clk *mclk24;
 	struct clk *mclk22;
@@ -37,16 +44,13 @@ struct snd_soc_card_drvdata {
 	bool bclk_prepared[NUM_BCLKS];
 };
 
+static const struct reg_default wm8741_reg_updates[] = {
+	{0x04, 0x0013},    /* R4 - Volume Control */
+};
+
 /*
  * clocks
  */
-enum {
-	BCLK_DACR,
-	BCLK_DACL,
-	BCLK_CPU,
-	NUM_BCLKS
-};
-
 static int tau_dac_clk_init(struct snd_soc_card_drvdata *drvdata)
 {
 	int ret, i;
@@ -178,14 +182,30 @@ static struct snd_soc_dai_link_component tau_dac_codecs[] = {
  */
 static int tau_dac_init(struct snd_soc_pcm_runtime *rtd)
 {
-	int ret;
+	int ret, i, j;
+	int num_codecs = rtd->num_codecs;
+	struct snd_soc_dai **codec_dais = rtd->codec_dais;
 	struct snd_soc_card_drvdata *drvdata =
 			snd_soc_card_get_drvdata(rtd->card);
 
 	ret = tau_dac_clk_init(drvdata);
 	if (ret < 0) {
-		dev_err(rtd->card->dev, "Initializing clocks failed\n");
+		dev_err(rtd->card->dev, "Failed to initialize clocks\n");
 		return ret;
+	}
+
+	for (i = 0; i < num_codecs; i++) {
+		/* change some codec settings */
+		for (j = 0; j < ARRAY_SIZE(wm8741_reg_updates); j++) {
+			ret = snd_soc_write(codec_dais[i]->codec,
+					wm8741_reg_updates[j].reg,
+					wm8741_reg_updates[j].def);
+
+			if (ret < 0) {
+				dev_err(rtd->card->dev, "Failed to configure codecs\n");
+				return ret;
+			}
+		}
 	}
 
 	return 0;
