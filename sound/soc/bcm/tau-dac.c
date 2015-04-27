@@ -46,6 +46,7 @@ struct snd_soc_card_drvdata {
 
 static const struct reg_default wm8741_reg_updates[] = {
 	{0x04, 0x0013},    /* R4 - Volume Control */
+	{0x05, 0x0080},    /* R5 - Format Control */
 };
 
 /*
@@ -218,10 +219,23 @@ static int tau_dac_startup(struct snd_pcm_substream *substream)
 
 static void tau_dac_shutdown(struct snd_pcm_substream *substream)
 {
+	int i;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	int num_codecs = rtd->num_codecs;
+	struct snd_soc_dai **codec_dais = rtd->codec_dais;
 	struct snd_soc_card_drvdata *drvdata =
 			snd_soc_card_get_drvdata(rtd->card);
 
+	/* disable codecs
+	 * having the codecs enabled while enabling the master clock
+	 * leads to random audible glitches
+	 */
+	for (i = 0; i < num_codecs; i++) {
+		snd_soc_update_bits(codec_dais[i]->codec, WM8741_FORMAT_CONTROL,
+				WM8741_PWDN_MASK, WM8741_PWDN);
+	}
+
+	/* disable clocks */
 	tau_dac_clk_disable(drvdata);
 	tau_dac_clk_unprepare(drvdata);
 }
@@ -302,7 +316,7 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 			return ret;
 	}
 
-	/* enable clocks*/
+	/* enable clocks */
 	ret = tau_dac_clk_enable(drvdata, mclk_rate, bclk_rate, lrclk_rate);
 	if (ret < 0) {
 		dev_err(rtd->card->dev, "Starting clocks failed: %d\n", ret);
@@ -313,6 +327,15 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 	if (ret < 0) {
 		dev_err(rtd->card->dev, "Preparing clocks failed: %d\n", ret);
 		return ret;
+	}
+
+	/* enable codecs */
+	/* TODO: TBC: powering down the codes is probably not required if we
+	 * use the AVMID reference.
+	 */
+	for (i = 0; i < num_codecs; i++) {
+		snd_soc_update_bits(codec_dais[i]->codec, WM8741_FORMAT_CONTROL,
+				WM8741_PWDN_MASK, 0);
 	}
 
 	dev_dbg(rtd->card->dev, "%s: mclk = %u, bclk = %u, lrclk = %u, width = %d, fmt = 0x%x",
