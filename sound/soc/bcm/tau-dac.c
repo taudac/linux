@@ -344,17 +344,6 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static struct snd_soc_pcm_stream tau_dac_params = {
-	/* TODO: SNDRV_PCM_FMTBIT_S24_LE should also work, but there seem to be an 
-	 * issue setting the bit clock in the si5351 driver. 
-	 */
-	.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S32_LE,
-	.rate_min =  32000,
-	.rate_max = 192000,
-	.channels_min = 2,
-	.channels_max = 2,
-};
-
 static struct snd_soc_ops tau_dac_ops = {
 	.startup   = tau_dac_startup,
 	.shutdown  = tau_dac_shutdown,
@@ -372,7 +361,6 @@ static struct snd_soc_dai_link tau_dac_dai[] = {
 		.dai_fmt       = SND_SOC_DAIFMT_I2S |
 				 SND_SOC_DAIFMT_NB_NF |
 				 SND_SOC_DAIFMT_CBS_CFS,
-		.params = &tau_dac_params,
 		.playback_only = true,
 		.ops  = &tau_dac_ops,
 		.init = tau_dac_init,
