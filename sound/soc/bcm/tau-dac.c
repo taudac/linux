@@ -214,15 +214,7 @@ static int tau_dac_init(struct snd_soc_pcm_runtime *rtd)
 
 static int tau_dac_startup(struct snd_pcm_substream *substream)
 {
-	struct snd_pcm_runtime *runtime = substream->runtime;
-
-	/* TODO: S24_LE should also work, but there seems to an issue setting the
-	 * bit clock, see the si5351 driver.
-	 */
-	u64 formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S32_LE;
-
-	return snd_pcm_hw_constraint_mask64(runtime, SNDRV_PCM_HW_PARAM_FORMAT, 
-			formats);
+	return 0;
 }
 
 static void tau_dac_shutdown(struct snd_pcm_substream *substream)
