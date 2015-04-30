@@ -255,8 +255,10 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 	unsigned int lrclk_rate = params_rate(params);
 	int width = params_width(params);
 	unsigned int fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF;
-
 	u16 osr;
+
+	if (width == 24)
+		width = 25;
 
 	switch (lrclk_rate) {
 	case 44100:
