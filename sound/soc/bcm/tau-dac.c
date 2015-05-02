@@ -130,8 +130,7 @@ static void tau_dac_clk_disable(struct snd_soc_card_drvdata *drvdata)
 }
 
 static int tau_dac_clk_enable(struct snd_soc_card_drvdata *drvdata,
-		unsigned long mclk_rate, unsigned long bclk_rate,
-		unsigned long lrclk_rate)
+		unsigned long mclk_rate, unsigned long bclk_rate)
 {
 	int ret, i;
 
@@ -251,10 +250,10 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_dai **codec_dais = rtd->codec_dais;
 	int num_codecs = rtd->num_codecs;
 
+	unsigned int fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF;
 	unsigned int mclk_rate, bclk_rate;
 	unsigned int lrclk_rate = params_rate(params);
 	int width = params_width(params);
-	unsigned int fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF;
 	u16 osr;
 
 	if (width == 24)
@@ -291,7 +290,7 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 
 	/* calculate oversampling rate */
 	if (lrclk_rate <= 48000)
-		osr = 0; // TODO: define WM8741_OSR_LOW etc. in wm8741.h
+		osr = 0; /* TODO: define WM8741_OSR_LOW etc. in wm8741.h */
 	else if (lrclk_rate <= 96000)
 		osr = 1;
 	else
@@ -319,7 +318,7 @@ static int tau_dac_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* enable clocks */
-	ret = tau_dac_clk_enable(drvdata, mclk_rate, bclk_rate, lrclk_rate);
+	ret = tau_dac_clk_enable(drvdata, mclk_rate, bclk_rate);
 	if (ret < 0) {
 		dev_err(rtd->card->dev, "Starting clocks failed: %d\n", ret);
 		return ret;
