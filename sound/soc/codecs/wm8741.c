@@ -88,11 +88,11 @@ static int wm8741_reset(struct snd_soc_codec *codec)
 static const DECLARE_TLV_DB_SCALE(dac_tlv_fine, -12700, 13, 0);
 static const DECLARE_TLV_DB_SCALE(dac_tlv, -12700, 400, 0);
 
-static const char *wm8741_output_phase[] = {"Normal", "Inverted"};
+static const char *wm8741_phase[] = {"Normal", "Inverted"};
 
 static const struct soc_enum wm8741_snd_control_enums[] = {
-		SOC_ENUM_SINGLE(WM8741_FORMAT_CONTROL, WM8741_REV_SHIFT, 
-		2, wm8741_output_phase),
+	SOC_ENUM_SINGLE(WM8741_FORMAT_CONTROL, WM8741_REV_SHIFT, 
+		2, wm8741_phase),
 };
 
 static const struct snd_kcontrol_new wm8741_snd_controls_stereo[] = {
