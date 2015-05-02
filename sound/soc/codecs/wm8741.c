@@ -89,10 +89,13 @@ static const DECLARE_TLV_DB_SCALE(dac_tlv_fine, -12700, 13, 0);
 static const DECLARE_TLV_DB_SCALE(dac_tlv, -12700, 400, 0);
 
 static const char *wm8741_phase[] = {"Normal", "Inverted"};
+static const char *wm8741_dither[] = {"Off", "RPDF", "TPDF", "HPDF"};
 
 static const struct soc_enum wm8741_snd_control_enums[] = {
 	SOC_ENUM_SINGLE(WM8741_FORMAT_CONTROL, WM8741_REV_SHIFT, 
 		2, wm8741_phase),
+	SOC_ENUM_SINGLE(WM8741_MODE_CONTROL_2, WM8741_DITHER_SHIFT, 
+		4, wm8741_dither),
 };
 
 static const struct snd_kcontrol_new wm8741_snd_controls_stereo[] = {
@@ -101,6 +104,7 @@ static const struct snd_kcontrol_new wm8741_snd_controls_stereo[] = {
 	SOC_DOUBLE_R_TLV("Playback Volume", WM8741_DACLMSB_ATTENUATION,
 		WM8741_DACRMSB_ATTENUATION, 0, 511, 1, dac_tlv),
 	SOC_ENUM("Output Phase",  wm8741_snd_control_enums[0]),
+	SOC_ENUM("Dither",  wm8741_snd_control_enums[1]),
 };
 
 static const struct snd_kcontrol_new wm8741_snd_controls_mono_left[] = {
@@ -108,6 +112,7 @@ static const struct snd_kcontrol_new wm8741_snd_controls_mono_left[] = {
 		1, 255, 1, dac_tlv_fine),
 	SOC_SINGLE_TLV("Playback Volume Left", WM8741_DACLMSB_ATTENUATION,
 		0, 511, 1, dac_tlv),
+	SOC_ENUM("Dither Left",  wm8741_snd_control_enums[1]),
 };
 
 static const struct snd_kcontrol_new wm8741_snd_controls_mono_right[] = {
@@ -115,6 +120,7 @@ static const struct snd_kcontrol_new wm8741_snd_controls_mono_right[] = {
 		1, 255, 1, dac_tlv_fine),
 	SOC_SINGLE_TLV("Playback Volume Right", WM8741_DACRMSB_ATTENUATION,
 		0, 511, 1, dac_tlv),
+	SOC_ENUM("Dither Right",  wm8741_snd_control_enums[1]),
 };
 
 static const struct snd_soc_dapm_widget wm8741_dapm_widgets[] = {
