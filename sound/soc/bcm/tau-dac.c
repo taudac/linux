@@ -45,7 +45,7 @@ struct snd_soc_card_drvdata {
 };
 
 static const struct reg_default wm8741_reg_updates[] = {
-	{0x04, 0x0013},    /* R4 - Volume Control */
+	{0x04, 0x0011},    /* R4 - Volume Control */
 	{0x05, 0x0080},    /* R5 - Format Control */
 };
 
