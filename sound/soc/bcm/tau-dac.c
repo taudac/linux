@@ -177,6 +177,17 @@ static struct snd_soc_dai_link_component tau_dac_codecs[] = {
 	},
 };
 
+static struct snd_soc_codec_conf tau_dac_codec_conf[] = {
+	{
+		.dev_name    = "wm8741.1-001a",
+		.name_prefix = "Left", // TODO: get it from DT
+	},
+	{
+		.dev_name    = "wm8741.1-001b",
+		.name_prefix = "Right",
+	},
+};
+
 /*
  * asoc digital audio interface
  */
@@ -372,9 +383,11 @@ static struct snd_soc_dai_link tau_dac_dai[] = {
  * asoc machine driver
  */
 static struct snd_soc_card tau_dac_card = {
-	.name       = "TauDAC",
-	.dai_link   = tau_dac_dai,
-	.num_links  = ARRAY_SIZE(tau_dac_dai),
+	.name        = "TauDAC",
+	.dai_link    = tau_dac_dai,
+	.num_links   = ARRAY_SIZE(tau_dac_dai),
+	.codec_conf  = tau_dac_codec_conf,
+	.num_configs = ARRAY_SIZE(tau_dac_codec_conf),
 };
 
 /*
