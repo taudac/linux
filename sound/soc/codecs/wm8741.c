@@ -117,23 +117,23 @@ static const struct snd_kcontrol_new wm8741_snd_controls_stereo[] = {
 };
 
 static const struct snd_kcontrol_new wm8741_snd_controls_mono_left[] = {
-	SOC_SINGLE_TLV("Fine Playback Volume Left", WM8741_DACLLSB_ATTENUATION,
+	SOC_SINGLE_TLV("Fine Playback Volume", WM8741_DACLLSB_ATTENUATION,
 		1, 255, 1, dac_tlv_fine),
-	SOC_SINGLE_TLV("Playback Volume Left", WM8741_DACLMSB_ATTENUATION,
+	SOC_SINGLE_TLV("Playback Volume", WM8741_DACLMSB_ATTENUATION,
 		0, 511, 1, dac_tlv),
-	SOC_ENUM("Anti-Clipping Mode Left",  wm8741_snd_control_enums[0]),
-	SOC_ENUM("Dither Left",  wm8741_snd_control_enums[2]),
-	SOC_ENUM("Filter Left",  wm8741_snd_control_enums[3]),
+	SOC_ENUM("Anti-Clipping Mode", wm8741_snd_control_enums[0]),
+	SOC_ENUM("Dither", wm8741_snd_control_enums[2]),
+	SOC_ENUM("Filter", wm8741_snd_control_enums[3]),
 };
 
 static const struct snd_kcontrol_new wm8741_snd_controls_mono_right[] = {
-	SOC_SINGLE_TLV("Fine Playback Volume Right", WM8741_DACRLSB_ATTENUATION,
+	SOC_SINGLE_TLV("Fine Playback Volume", WM8741_DACRLSB_ATTENUATION,
 		1, 255, 1, dac_tlv_fine),
-	SOC_SINGLE_TLV("Playback Volume Right", WM8741_DACRMSB_ATTENUATION,
+	SOC_SINGLE_TLV("Playback Volume", WM8741_DACRMSB_ATTENUATION,
 		0, 511, 1, dac_tlv),
-	SOC_ENUM("Anti-Clipping Mode Right",  wm8741_snd_control_enums[0]),
-	SOC_ENUM("Dither Right",  wm8741_snd_control_enums[2]),
-	SOC_ENUM("Filter Right",  wm8741_snd_control_enums[3]),
+	SOC_ENUM("Anti-Clipping Mode", wm8741_snd_control_enums[0]),
+	SOC_ENUM("Dither", wm8741_snd_control_enums[2]),
+	SOC_ENUM("Filter", wm8741_snd_control_enums[3]),
 };
 
 static const struct snd_soc_dapm_widget wm8741_dapm_widgets[] = {
