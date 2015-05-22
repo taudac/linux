@@ -122,7 +122,7 @@ struct clk *clk_register_gpio_mux(struct device *dev, const char *name,
 
 	if (dev)
 		clk_gpio_mux = devm_kzalloc(dev, sizeof(struct clk_gpio_mux),
-					GFP_KERNEL);
+				GFP_KERNEL);
 	else
 		clk_gpio_mux = kzalloc(sizeof(struct clk_gpio_mux), GFP_KERNEL);
 
@@ -143,7 +143,7 @@ struct clk *clk_register_gpio_mux(struct device *dev, const char *name,
 
 	if (err) {
 		pr_err("%s: %s: Error requesting gpio %u\n",
-		       __func__, name, desc_to_gpio(gpiod_sel));
+				__func__, name, desc_to_gpio(gpiod_sel));
 		return ERR_PTR(err);
 	}
 	clk_gpio_mux->gpiod_sel = gpiod_sel;
@@ -164,7 +164,8 @@ struct clk *clk_register_gpio_mux(struct device *dev, const char *name,
 
 		if (err) {
 			pr_err("%s: %s: Error requesting gpio %u\n",
-				   __func__, name, desc_to_gpio(gpiod_ena));
+					__func__, name,
+					desc_to_gpio(gpiod_ena));
 			return ERR_PTR(err);
 		}
 		clk_gpio_mux->gpiod_ena = gpiod_ena;
@@ -254,7 +255,7 @@ static struct clk *of_clk_gpio_mux_delayed_register_get(
 
 	for (i = 0; i < num_parents; i++)
 		parent_names[i] = of_clk_get_parent_name(data->node, i);
-	
+
 	clk = clk_register_gpio_mux(NULL, clk_name, parent_names, num_parents,
 			gpiod_sel, gpiod_ena, flags);
 	if (IS_ERR(clk)) {
@@ -270,7 +271,7 @@ static struct clk *of_clk_gpio_mux_delayed_register_get(
 err_gpio:
 	mutex_unlock(&data->lock);
 	if (gpio == -EPROBE_DEFER)
-		pr_warning("%s: %s: GPIOs not yet available, retry later\n",
+		pr_warn("%s: %s: GPIOs not yet available, retry later\n",
 				__func__, clk_name);
 	else
 		pr_err("%s: %s: Can't get GPIOs\n",
@@ -286,7 +287,7 @@ void __init of_gpio_mux_clk_setup(struct device_node *node)
 	struct clk_gpio_mux_delayed_register_data *data;
 
 	data = kzalloc(sizeof(struct clk_gpio_mux_delayed_register_data),
-		       GFP_KERNEL);
+			GFP_KERNEL);
 	if (!data)
 		return;
 
