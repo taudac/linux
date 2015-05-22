@@ -39,6 +39,7 @@ struct snd_soc_card_drvdata {
 	struct clk *mclk24;
 	struct clk *mclk22;
 	struct clk *mux_mclk;
+	struct clk *gate_mclk;
 	bool mclk_enabled;
 	struct clk *bclk[NUM_BCLKS];
 	bool bclk_prepared[NUM_BCLKS];
@@ -90,6 +91,10 @@ static int tau_dac_clk_init(struct snd_soc_card_drvdata *drvdata)
 	if (ret < 0)
 		return ret;
 
+	ret = clk_prepare(drvdata->gate_mclk);
+	if (ret < 0)
+		return ret;
+
 	return 0;
 }
 
@@ -124,7 +129,7 @@ static int tau_dac_clk_prepare(struct snd_soc_card_drvdata *drvdata)
 static void tau_dac_clk_disable(struct snd_soc_card_drvdata *drvdata)
 {
 	if (drvdata->mclk_enabled) {
-		clk_disable(drvdata->mux_mclk);
+		clk_disable(drvdata->gate_mclk);
 		drvdata->mclk_enabled = false;
 	}
 }
@@ -147,7 +152,7 @@ static int tau_dac_clk_enable(struct snd_soc_card_drvdata *drvdata,
 	if (ret < 0)
 		return ret;
 
-	ret = clk_enable(drvdata->mux_mclk);
+	ret = clk_enable(drvdata->gate_mclk);
 	if (ret < 0)
 		return ret;
 
@@ -438,6 +443,10 @@ static int tau_dac_set_clk(struct device *dev,
 
 	drvdata->mux_mclk = devm_clk_get(dev, "mux-mclk");
 	if (IS_ERR(drvdata->mux_mclk))
+		return -EINVAL;
+
+	drvdata->gate_mclk = devm_clk_get(dev, "gate-mclk");
+	if (IS_ERR(drvdata->gate_mclk))
 		return -EINVAL;
 
 	drvdata->bclk[BCLK_DACR] = devm_clk_get(dev, "bclk-dacr");

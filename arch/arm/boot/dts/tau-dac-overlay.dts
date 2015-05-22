@@ -4,11 +4,11 @@
 
 / {
 	compatible = "brcm,bcm2708";
-	
+
 	fragment@0 {
 		target = <&gpio>;
 		__overlay__ {
-			
+
 			mclk_pins: mclk_pins {
 				brcm,pins = <22 27>;
 				brcm,function = <1>;
@@ -16,7 +16,7 @@
 			};
 		};
 	};
-	
+
 	fragment@1 {
 		target-path = "/clocks";
 		__overlay__ {
@@ -38,17 +38,23 @@
 				#clock-cells = <0>;
 				clock-frequency = <24576000>;
 			};
-			
+
 			mux_mclk: tau_mux_mclk {
 				compatible = "gpio-mux-clock";
 				clocks = <&osc24>, <&osc22>;
 				#clock-cells = <0>;
 				select-gpios = <&gpio 22 0>;
+			};
+
+			gate_mclk: tau_gate_mclk {
+				compatible = "gpio-gate-clock";
+				clocks = <&mux_mclk>;
+				#clock-cells = <0>;
 				enable-gpios = <&gpio 27 0>;
 			};
 		};
 	};
-	
+
 	fragment@2 {
 		target = <&i2c1>;
 		__overlay__ {
@@ -78,14 +84,14 @@
 				#clock-cells = <1>;
 				compatible = "silabs,si5351c";
 				reg = <0x60>;
-				clocks = <&xtal>, <&mux_mclk>;
+				clocks = <&xtal>, <&gate_mclk>;
 				clock-names = "xtal", "clkin";
 				silabs,pll-source = <0 0>, <1 1>;
 				status = "okay";
 
 				clkout0 {
 					reg = <0>;
-					silabs,disable-state = <2>;					
+					silabs,disable-state = <2>;
 					silabs,clock-source = <0>;
 					silabs,multisynth-source = <1>;
 					silabs,drive-strength = <2>;
@@ -103,7 +109,7 @@
 
 				clkout3 {
 					reg = <3>;
-					silabs,disable-state = <2>;					
+					silabs,disable-state = <2>;
 					silabs,clock-source = <0>;
 					silabs,multisynth-source = <1>;
 					silabs,drive-strength = <2>;
@@ -116,7 +122,7 @@
 
 				clkout5 {
 					reg = <5>;
-					silabs,disable-state = <2>;					
+					silabs,disable-state = <2>;
 					silabs,clock-source = <0>;
 					silabs,multisynth-source = <1>;
 					silabs,drive-strength = <2>;
@@ -144,18 +150,20 @@
 			tau-dac,codecs = <&wm8741_left>, <&wm8741_right>;
 
 			clocks      = <&osc24>,
-				      <&osc22>,
-				      <&mux_mclk>,
+			              <&osc22>,
+			              <&mux_mclk>,
+			              <&gate_mclk>,
 			              <&si5351 5>, 
 			              <&si5351 3>,
 			              <&si5351 0>; 
 			clock-names = "mclk-24M",
-				      "mclk-22M",
-				      "mux-mclk",
+			              "mclk-22M",
+			              "mux-mclk",
+			              "gate-mclk",
 			              "bclk-dacr",
 			              "bclk-dacl",
 			              "bclk-cpu";
-			
+
 			status = "okay";
 		};
 	};
