@@ -39,10 +39,10 @@ static int clk_gpio_mux_set_parent(struct clk_hw *hw, u8 index)
 {
 	struct clk_gpio_mux *clk = to_clk_gpio_mux(hw);
 
-	if (index > 1)
-		return -EINVAL;
-
 	gpiod_set_value(clk->gpiod, index);
+
+	pr_debug("%s: %s: index = %d\n",
+			__func__,  __clk_get_name(hw->clk), index);
 
 	return 0;
 }
@@ -111,8 +111,10 @@ struct clk *clk_register_gpio_mux(struct device *dev, const char *name,
 
 	clk = clk_register(dev, &clk_gpio_mux->hw);
 
-	if (!IS_ERR(clk))
+	if (!IS_ERR(clk)) {
+		pr_debug("%s: %s: Successful registration\n", __func__, name);
 		return clk;
+	}
 
 	if (!dev) {
 		kfree(clk_gpio_mux);
@@ -190,7 +192,7 @@ static struct clk *of_clk_gpio_mux_delayed_register_get(
 err_gpio:
 	mutex_unlock(&data->lock);
 	if (gpio == -EPROBE_DEFER)
-		pr_warn("%s: %s: GPIOs not yet available, retry later\n",
+		pr_debug("%s: %s: GPIOs not yet available, retry later\n",
 				__func__, clk_name);
 	else
 		pr_err("%s: %s: Can't get GPIOs\n",
