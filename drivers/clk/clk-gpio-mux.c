@@ -147,7 +147,6 @@ static struct clk *of_clk_gpio_mux_delayed_register_get(
 	const char **parent_names;
 	struct gpio_desc *gpiod;
 	int gpio;
-	u32 flags = 0;
 
 	mutex_lock(&data->lock);
 
@@ -177,7 +176,7 @@ static struct clk *of_clk_gpio_mux_delayed_register_get(
 		parent_names[i] = of_clk_get_parent_name(data->node, i);
 
 	clk = clk_register_gpio_mux(NULL, clk_name, parent_names, num_parents,
-			gpiod, flags);
+			gpiod, 0);
 	if (IS_ERR(clk)) {
 		mutex_unlock(&data->lock);
 		return clk;
