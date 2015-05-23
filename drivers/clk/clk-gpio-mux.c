@@ -101,6 +101,9 @@ struct clk *clk_register_gpio_mux(struct device *dev, const char *name,
 	}
 	clk_gpio_mux->gpiod = gpiod;
 
+	if (num_parents != 2)
+		return ERR_PTR(-EINVAL);
+
 	init.name = name;
 	init.ops = &clk_gpio_mux_ops;
 	init.flags = clk_flags | CLK_IS_BASIC;
