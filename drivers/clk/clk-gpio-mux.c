@@ -207,8 +207,7 @@ void __init of_gpio_mux_clk_setup(struct device_node *node)
 {
 	struct clk_gpio_mux_delayed_register_data *data;
 
-	data = kzalloc(sizeof(struct clk_gpio_mux_delayed_register_data),
-			GFP_KERNEL);
+	data = kzalloc(sizeof(*data), GFP_KERNEL);
 	if (!data)
 		return;
 
