@@ -40,9 +40,8 @@ static int clk_gpio_mux_set_parent(struct clk_hw *hw, u8 index)
 	struct clk_gpio_mux *clk = to_clk_gpio_mux(hw);
 
 	gpiod_set_value(clk->gpiod, index);
-
 	pr_debug("%s: %s: index = %d\n",
-			__func__,  __clk_get_name(hw->clk), index);
+			__clk_get_name(hw->clk), __func__, index);
 
 	return 0;
 }
@@ -96,7 +95,7 @@ struct clk *clk_register_gpio_mux(struct device *dev, const char *name,
 
 	if (err) {
 		pr_err("%s: %s: Error requesting gpio %u\n",
-				__func__, name, desc_to_gpio(gpiod));
+				name, __func__, desc_to_gpio(gpiod));
 		return ERR_PTR(err);
 	}
 	clk_gpio_mux->gpiod = gpiod;
@@ -112,7 +111,7 @@ struct clk *clk_register_gpio_mux(struct device *dev, const char *name,
 	clk = clk_register(dev, &clk_gpio_mux->hw);
 
 	if (!IS_ERR(clk)) {
-		pr_debug("%s: %s: Successful registration\n", __func__, name);
+		pr_debug("%s: %s: Successful registration\n", name, __func__);
 		return clk;
 	}
 
@@ -193,10 +192,11 @@ err_gpio:
 	mutex_unlock(&data->lock);
 	if (gpio == -EPROBE_DEFER)
 		pr_debug("%s: %s: GPIOs not yet available, retry later\n",
-				__func__, clk_name);
+				clk_name, __func__);
 	else
 		pr_err("%s: %s: Can't get GPIOs\n",
-				__func__, clk_name);
+				clk_name, __func__);
+
 	return ERR_PTR(gpio);
 }
 
