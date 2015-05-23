@@ -167,7 +167,7 @@ static struct clk *of_clk_gpio_mux_delayed_register_get(
 		return clk;
 	}
 
-	parent_names = kzalloc((sizeof(char *) * num_parents), GFP_KERNEL);
+	parent_names = kcalloc(num_parents, sizeof(char *), GFP_KERNEL);
 	if (!parent_names) {
 		kfree(parent_names);
 		return clk;
