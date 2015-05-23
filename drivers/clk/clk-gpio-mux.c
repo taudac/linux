@@ -94,8 +94,9 @@ struct clk *clk_register_gpio_mux(struct device *dev, const char *name,
 				gpio_flags, name);
 
 	if (err) {
-		pr_err("%s: %s: Error requesting gpio %u\n",
-				name, __func__, desc_to_gpio(gpiod));
+		if (err != -EPROBE_DEFER)
+			pr_err("%s: %s: Error requesting gpio %u\n",
+					name, __func__, desc_to_gpio(gpiod));
 		return ERR_PTR(err);
 	}
 	clk_gpio_mux->gpiod = gpiod;
