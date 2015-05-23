@@ -108,7 +108,10 @@ struct clk *clk_register_gpio_mux(struct device *dev, const char *name,
 
 	clk_gpio_mux->hw.init = &init;
 
-	clk = clk_register(dev, &clk_gpio_mux->hw);
+	if (dev)
+		clk = devm_clk_register(dev, &clk_gpio_mux->hw);
+	else
+		clk = clk_register(NULL, &clk_gpio_mux->hw);
 
 	if (!IS_ERR(clk)) {
 		pr_debug("%s: %s: Successful registration\n", name, __func__);
