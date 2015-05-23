@@ -66,8 +66,8 @@ struct clk *clk_register_gpio_mux(struct device *dev, const char *name,
 		const char **parent_names, u8 num_parents,
 		struct gpio_desc *gpiod, unsigned long clk_flags)
 {
-	struct clk_gpio_mux *clk_gpio_mux = NULL;
-	struct clk *clk = ERR_PTR(-EINVAL);
+	struct clk_gpio_mux *clk_gpio_mux;
+	struct clk *clk;
 	struct clk_init_data init = { NULL };
 	unsigned long gpio_flags;
 	int err;
@@ -148,7 +148,7 @@ static struct clk *of_clk_gpio_mux_delayed_register_get(
 		void *_data)
 {
 	struct clk_gpio_mux_delayed_register_data *data = _data;
-	struct clk *clk = ERR_PTR(-EINVAL);
+	struct clk *clk;
 	const char *clk_name = data->node->name;
 	int i, num_parents;
 	const char **parent_names;
@@ -170,13 +170,13 @@ static struct clk *of_clk_gpio_mux_delayed_register_get(
 	num_parents = of_clk_get_parent_count(data->node);
 	if (num_parents != 2) {
 		pr_err("mux-clock %s must have 2 parents\n", data->node->name);
-		return clk;
+		return ERR_PTR(-EINVAL);
 	}
 
 	parent_names = kcalloc(num_parents, sizeof(char *), GFP_KERNEL);
 	if (!parent_names) {
 		kfree(parent_names);
-		return clk;
+		return ERR_PTR(-ENOMEM);
 	}
 
 	for (i = 0; i < num_parents; i++)
