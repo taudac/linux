@@ -475,6 +475,12 @@ Load:   dtoverlay=rpi-dac
 Params: <None>
 
 
+Name:   tau-dac
+Info:   Configures the TauDAC audio card
+Load:   dtoverlay=tau-dac
+Params: <None>
+
+
 Name:   rpi-display
 Info:   RPi-Display - 2.8" Touch Display by Watterott
 Load:   dtoverlay=rpi-display,<param>=<val>
