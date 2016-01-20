@@ -289,13 +289,14 @@
 	.private_value = (unsigned long)&(struct soc_bytes_ext) \
 		{.max = xcount, .get = xhandler_get, .put = xhandler_put, } }
 #define SOC_SINGLE_XR_SX(xname, xregbase, xregcount, xnbits, \
-		xmin, xmax, xinvert) \
+		xmin, xmax, xinvert, xregbase_is_lsb) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname), \
 	.info = snd_soc_info_xr_sx, .get = snd_soc_get_xr_sx, \
 	.put = snd_soc_put_xr_sx, \
 	.private_value = (unsigned long)&(struct soc_mreg_control) \
 		{.regbase = xregbase, .regcount = xregcount, .nbits = xnbits, \
-		.invert = xinvert, .min = xmin, .max = xmax} }
+		.invert = xinvert, .regbase_is_lsb = xregbase_is_lsb, \
+		.min = xmin, .max = xmax} }
 
 #define SOC_SINGLE_STROBE(xname, xreg, xshift, xinvert) \
 	SOC_SINGLE_EXT(xname, xreg, xshift, 1, xinvert, \
@@ -1211,7 +1212,7 @@ struct soc_bytes_ext {
 /* multi register control */
 struct soc_mreg_control {
 	long min, max;
-	unsigned int regbase, regcount, nbits, invert;
+	unsigned int regbase, regcount, nbits, invert, regbase_is_lsb;
 };
 
 /* enumerated kcontrol */
