@@ -836,17 +836,23 @@ int snd_soc_get_xr_sx(struct snd_kcontrol *kcontrol,
 		(struct soc_mreg_control *)kcontrol->private_value;
 	unsigned int regbase = mc->regbase;
 	unsigned int regcount = mc->regcount;
-	unsigned int regwshift = component->val_bytes * BITS_PER_BYTE;
-	unsigned int regwmask = (1<<regwshift)-1;
 	unsigned int invert = mc->invert;
 	unsigned int regbase_is_lsb = mc->regbase_is_lsb;
 	unsigned long mask = (1UL<<mc->nbits)-1;
 	long min = mc->min;
 	long max = mc->max;
 	long val = 0;
+	unsigned int regwshift;
+	unsigned int regwmask;
 	unsigned int regval;
 	unsigned int i;
 	int ret;
+
+	if (regcount < 1)
+		return -EINVAL;
+
+	regwshift = mc->nbits / regcount;
+	regwmask = (1<<regwshift)-1;
 
 	for (i = 0; i < regcount; i++) {
 		ret = snd_soc_component_read(component, regbase+i, &regval);
@@ -890,18 +896,25 @@ int snd_soc_put_xr_sx(struct snd_kcontrol *kcontrol,
 		(struct soc_mreg_control *)kcontrol->private_value;
 	unsigned int regbase = mc->regbase;
 	unsigned int regcount = mc->regcount;
-	unsigned int regwshift = component->val_bytes * BITS_PER_BYTE;
-	unsigned int regwmask = (1<<regwshift)-1;
 	unsigned int invert = mc->invert;
 	unsigned int regbase_is_lsb = mc->regbase_is_lsb;
 	unsigned long mask = (1UL<<mc->nbits)-1;
 	long max = mc->max;
 	long val = ucontrol->value.integer.value[0];
 	unsigned int i, regval, regmask;
+	unsigned int regwshift;
+	unsigned int regwmask;
 	int err;
+
+	if (regcount < 1)
+		return -EINVAL;
+
+	regwshift = mc->nbits / regcount;
+	regwmask = (1<<regwshift)-1;
 
 	if (invert)
 		val = max - val;
+	
 	val &= mask;
 	for (i = 0; i < regcount; i++) {
 		if (regbase_is_lsb) {
