@@ -36,6 +36,7 @@
 /*
  * Field Definitions.
  */
+#define WM8741_ATTENUATION_MAX                  0x03FF
 
 /*
  * R0 (0x00) - DACLLSB_ATTENUATION

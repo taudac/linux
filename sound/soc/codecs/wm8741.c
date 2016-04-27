@@ -66,8 +66,37 @@ static int wm8741_reset(struct snd_soc_codec *codec)
 	return snd_soc_write(codec, WM8741_RESET, 0);
 }
 
+static int wm8741_volume_set(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
+	struct wm8741_priv *wm8741 = snd_soc_codec_get_drvdata(codec);
+	struct soc_mreg_control *mc =
+			(struct soc_mreg_control *)kcontrol->private_value;
+	unsigned int reg = mc->regbase + 1;
+	int ret ;
+
+	/* Clear the cached update bit */
+	regcache_cache_only(wm8741->regmap, true);
+	regmap_update_bits(wm8741->regmap, reg, WM8741_UPDATELL, 0);
+	regcache_cache_only(wm8741->regmap, false);
+
+	/* Update the attenuation value */
+	ret = snd_soc_put_xr_sx(kcontrol, ucontrol);
+	if (ret < 0)
+		return ret;
+
+	/* Now set the update bit */
+	ret = snd_soc_update_bits(codec, reg, WM8741_UPDATELL, WM8741_UPDATELL);
+	if (ret < 0)
+		return ret;
+
+	return 0;
+}
+
 static const DECLARE_TLV_DB_SCALE(dac_tlv_fine, -12700, 13, 0);
 static const DECLARE_TLV_DB_SCALE(dac_tlv, -12700, 400, 0);
+static const DECLARE_TLV_DB_MINMAX_MUTE(wm8741_vol_tlv, -12788, 0);
 
 static const struct snd_kcontrol_new wm8741_snd_controls_stereo[] = {
 SOC_DOUBLE_R_TLV("Fine Playback Volume", WM8741_DACLLSB_ATTENUATION,
@@ -77,17 +106,17 @@ SOC_DOUBLE_R_TLV("Playback Volume", WM8741_DACLMSB_ATTENUATION,
 };
 
 static const struct snd_kcontrol_new wm8741_snd_controls_mono_left[] = {
-SOC_SINGLE_TLV("Fine Playback Volume", WM8741_DACLLSB_ATTENUATION,
-		 1, 255, 1, dac_tlv_fine),
-SOC_SINGLE_TLV("Playback Volume", WM8741_DACLMSB_ATTENUATION,
-		 0, 511, 1, dac_tlv),
+SOC_SINGLE_XR_SX_EXT_TLV("Playback Volume", WM8741_DACLLSB_ATTENUATION, 2,
+		WM8741_LAT_4_0_WIDTH + WM8741_LAT_9_5_0_WIDTH,
+		0, WM8741_ATTENUATION_MAX, 1, 1,
+		snd_soc_get_xr_sx, wm8741_volume_set, wm8741_vol_tlv),
 };
 
 static const struct snd_kcontrol_new wm8741_snd_controls_mono_right[] = {
-SOC_SINGLE_TLV("Fine Playback Volume", WM8741_DACRLSB_ATTENUATION,
-		1, 255, 1, dac_tlv_fine),
-SOC_SINGLE_TLV("Playback Volume", WM8741_DACRMSB_ATTENUATION,
-		0, 511, 1, dac_tlv),
+SOC_SINGLE_XR_SX_EXT_TLV("Playback Volume", WM8741_DACRLSB_ATTENUATION, 2,
+		WM8741_RAT_4_0_WIDTH + WM8741_RAT_9_5_0_WIDTH,
+		0, WM8741_ATTENUATION_MAX, 1, 1,
+		snd_soc_get_xr_sx, wm8741_volume_set, wm8741_vol_tlv),
 };
 
 static const struct snd_soc_dapm_widget wm8741_dapm_widgets[] = {
