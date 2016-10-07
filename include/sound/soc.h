@@ -312,8 +312,9 @@
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname), \
 	.info = snd_soc_info_xr_sx, .get = snd_soc_get_xr_sx, \
 	.put = snd_soc_put_xr_sx, \
-	.private_value = (unsigned long)&(struct soc_mreg_control) \
-		{.regbase = xregbase, .regcount = xregcount, .nbits = xnbits, \
+	.private_value = (unsigned long)&(struct soc_mixer_control) \
+		{.reg = xregbase, .rreg = xregbase, .shift = 0, .rshift = 0, \
+		.regcount = xregcount, .nbits = xnbits, \
 		.invert = xinvert, .min = xmin, .max = xmax} }
 
 #define SOC_SINGLE_STROBE(xname, xreg, xshift, xinvert) \
@@ -1212,6 +1213,8 @@ struct soc_mixer_control {
 	unsigned int invert:1;
 	unsigned int autodisable:1;
 	struct snd_soc_dobj dobj;
+	/* multi register control */
+	unsigned int regcount, nbits;
 };
 
 struct soc_bytes {
@@ -1227,12 +1230,6 @@ struct soc_bytes_ext {
 	/* used for TLV byte control */
 	int (*get)(unsigned int __user *bytes, unsigned int size);
 	int (*put)(const unsigned int __user *bytes, unsigned int size);
-};
-
-/* multi register control */
-struct soc_mreg_control {
-	long min, max;
-	unsigned int regbase, regcount, nbits, invert;
 };
 
 /* enumerated kcontrol */
