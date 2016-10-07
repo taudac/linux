@@ -807,7 +807,7 @@ int snd_soc_info_xr_sx(struct snd_kcontrol *kcontrol,
 	struct soc_mixer_control *mc =
 		(struct soc_mixer_control *)kcontrol->private_value;
 	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
-	uinfo->count = 1;
+	uinfo->count = snd_soc_volsw_is_stereo(mc) ? 2 : 1;
 	uinfo->value.integer.min = mc->min;
 	uinfo->value.integer.max = mc->max;
 
@@ -835,6 +835,7 @@ int snd_soc_get_xr_sx(struct snd_kcontrol *kcontrol,
 	struct soc_mixer_control *mc =
 		(struct soc_mixer_control *)kcontrol->private_value;
 	unsigned int regbase = mc->reg;
+	unsigned int regbase2 = mc->rreg;
 	unsigned int regcount = mc->regcount;
 	unsigned int regwshift = component->val_bytes * BITS_PER_BYTE;
 	unsigned int regwmask = (1<<regwshift)-1;
@@ -860,6 +861,22 @@ int snd_soc_get_xr_sx(struct snd_kcontrol *kcontrol,
 		val = max - val;
 	ucontrol->value.integer.value[0] = val;
 
+	if (snd_soc_volsw_is_stereo(mc)) {
+		for (i = 0; i < regcount; i++) {
+			ret = snd_soc_component_read(component, regbase2+i,
+					&regval);
+			if (ret)
+				return ret;
+			val |= (regval & regwmask) << (regwshift*(regcount-i-1));
+		}
+		val &= mask;
+		if (min < 0 && val > max)
+			val |= ~mask;
+		if (invert)
+			val = max - val;
+		ucontrol->value.integer.value[1] = val;
+	}
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_get_xr_sx);
@@ -884,6 +901,7 @@ int snd_soc_put_xr_sx(struct snd_kcontrol *kcontrol,
 	struct soc_mixer_control *mc =
 		(struct soc_mixer_control *)kcontrol->private_value;
 	unsigned int regbase = mc->reg;
+	unsigned int regbase2 = mc->rreg;
 	unsigned int regcount = mc->regcount;
 	unsigned int regwshift = component->val_bytes * BITS_PER_BYTE;
 	unsigned int regwmask = (1<<regwshift)-1;
@@ -891,6 +909,7 @@ int snd_soc_put_xr_sx(struct snd_kcontrol *kcontrol,
 	unsigned long mask = (1UL<<mc->nbits)-1;
 	long max = mc->max;
 	long val = ucontrol->value.integer.value[0];
+	long val2 = ucontrol->value.integer.value[1];
 	unsigned int i, regval, regmask;
 	int err;
 
@@ -904,6 +923,21 @@ int snd_soc_put_xr_sx(struct snd_kcontrol *kcontrol,
 				regmask, regval);
 		if (err < 0)
 			return err;
+	}
+
+	if (snd_soc_volsw_is_stereo(mc)) {
+		if (invert)
+			val2 = max - val2;
+		val2 &= mask;
+		for (i = 0; i < regcount; i++) {
+			regval = (val2 >> (regwshift*(regcount-i-1))) & regwmask;
+			regmask = (mask >> (regwshift*(regcount-i-1))) &
+					regwmask;
+			err = snd_soc_component_update_bits(component,
+					regbase2+i, regmask, regval);
+			if (err < 0)
+				return err;
+		}
 	}
 
 	return 0;
