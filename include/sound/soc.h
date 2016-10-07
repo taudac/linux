@@ -60,6 +60,11 @@
 	((unsigned long)&(struct soc_mixer_control) \
 	{.reg = xlreg, .rreg = xrreg, .shift = xshift, .rshift = xshift, \
 	.min = xmin, .max = xmax, .platform_max = xmax, .invert = xinvert})
+#define SOC_SINGLE_XR_SX_VALUE(xregbase, xregcount, xnbits, xmin, xmax, xinvert, xregbase_is_lsb) \
+	((unsigned long)&(struct soc_mreg_control) \
+	{.regbase = xregbase, .regcount = xregcount, .nbits = xnbits, \
+	.invert = xinvert, .regbase_is_lsb = xregbase_is_lsb, \
+	.min = xmin, .max = xmax})
 #define SOC_SINGLE(xname, reg, shift, max, invert) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
 	.info = snd_soc_info_volsw, .get = snd_soc_get_volsw,\
@@ -307,15 +312,14 @@
 	.info = snd_soc_bytes_info_ext, \
 	.private_value = (unsigned long)&(struct soc_bytes_ext) \
 		{.max = xcount, .get = xhandler_get, .put = xhandler_put, } }
+
 #define SOC_SINGLE_XR_SX(xname, xregbase, xregcount, xnbits, \
 		xmin, xmax, xinvert, lsb_first) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname), \
 	.info = snd_soc_info_xr_sx, .get = snd_soc_get_xr_sx, \
 	.put = snd_soc_put_xr_sx, \
-	.private_value = (unsigned long)&(struct soc_mreg_control) \
-		{.regbase = xregbase, .regcount = xregcount, .nbits = xnbits, \
-		.invert = xinvert, .lsb_first = xlsb_first, \
-		.min = xmin, .max = xmax} }
+	.private_value = SOC_SINGLE_XR_SX_VALUE(xregbase, xregcount, xnbits, \
+		xmin, xmax, xinvert, lsb_first) }
 
 #define SOC_SINGLE_STROBE(xname, xreg, xshift, xinvert) \
 	SOC_SINGLE_EXT(xname, xreg, xshift, 1, xinvert, \
