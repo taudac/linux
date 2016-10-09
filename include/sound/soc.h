@@ -307,14 +307,14 @@
 	.info = snd_soc_bytes_info_ext, \
 	.private_value = (unsigned long)&(struct soc_bytes_ext) \
 		{.max = xcount, .get = xhandler_get, .put = xhandler_put, } }
-#define SOC_SINGLE_XR_SX(xname, xregbase, xregcount, xnbits, \
+#define SOC_SINGLE_XR_SX(xname, xregbase, xregcount, xnbits, xshift, \
 		xmin, xmax, xinvert, xlsb_first) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname), \
 	.info = snd_soc_info_xr_sx, .get = snd_soc_get_xr_sx, \
 	.put = snd_soc_put_xr_sx, \
 	.private_value = (unsigned long)&(struct soc_mreg_control) \
 		{.mc.reg = xregbase, .mc.rreg = xregbase, \
-		.mc.shift = 0, .mc.rshift = 0,\
+		.mc.shift = xshift, .mc.rshift = xshift, \
 		.mc.invert = xinvert, .mc.min = xmin, .mc.max = xmax, \
 		.regcount = xregcount, .nbits = xnbits, .lsb_first = xlsb_first} }
 
