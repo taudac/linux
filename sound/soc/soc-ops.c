@@ -804,12 +804,12 @@ EXPORT_SYMBOL_GPL(snd_soc_bytes_tlv_callback);
 int snd_soc_info_xr_sx(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_info *uinfo)
 {
-	struct soc_mreg_control *mc =
+	struct soc_mreg_control *mrc =
 		(struct soc_mreg_control *)kcontrol->private_value;
 	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
 	uinfo->count = 1;
-	uinfo->value.integer.min = mc->min;
-	uinfo->value.integer.max = mc->max;
+	uinfo->value.integer.min = mrc->mc.min;
+	uinfo->value.integer.max = mrc->mc.max;
 
 	return 0;
 }
@@ -832,16 +832,16 @@ int snd_soc_get_xr_sx(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
-	struct soc_mreg_control *mc =
+	struct soc_mreg_control *mrc =
 		(struct soc_mreg_control *)kcontrol->private_value;
-	unsigned int regbase = mc->regbase;
-	unsigned int regcount = mc->regcount;
+	unsigned int regbase = mrc->mc.reg;
+	unsigned int regcount = mrc->regcount;
 	unsigned int regwshift = component->val_bytes * BITS_PER_BYTE;
 	unsigned int regwmask = (1<<regwshift)-1;
-	unsigned int invert = mc->invert;
-	unsigned long mask = (1UL<<mc->nbits)-1;
-	long min = mc->min;
-	long max = mc->max;
+	unsigned int invert = mrc->mc.invert;
+	unsigned long mask = (1UL<<mrc->nbits)-1;
+	long min = mrc->mc.min;
+	long max = mrc->mc.max;
 	long val = 0;
 	unsigned int regval;
 	unsigned int i;
@@ -881,15 +881,15 @@ int snd_soc_put_xr_sx(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
-	struct soc_mreg_control *mc =
+	struct soc_mreg_control *mrc =
 		(struct soc_mreg_control *)kcontrol->private_value;
-	unsigned int regbase = mc->regbase;
-	unsigned int regcount = mc->regcount;
+	unsigned int regbase = mrc->mc.reg;
+	unsigned int regcount = mrc->regcount;
 	unsigned int regwshift = component->val_bytes * BITS_PER_BYTE;
 	unsigned int regwmask = (1<<regwshift)-1;
-	unsigned int invert = mc->invert;
-	unsigned long mask = (1UL<<mc->nbits)-1;
-	long max = mc->max;
+	unsigned int invert = mrc->mc.invert;
+	unsigned long mask = (1UL<<mrc->nbits)-1;
+	long max = mrc->mc.max;
 	long val = ucontrol->value.integer.value[0];
 	unsigned int i, regval, regmask;
 	int err;
