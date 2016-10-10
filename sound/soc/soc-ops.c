@@ -807,7 +807,7 @@ int snd_soc_info_xr_sx(struct snd_kcontrol *kcontrol,
 	struct soc_mreg_control *mrc =
 		(struct soc_mreg_control *)kcontrol->private_value;
 	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
-	uinfo->count = 1;
+	uinfo->count = snd_soc_volsw_is_stereo(&mrc->mc) ? 2 : 1;
 	uinfo->value.integer.min = mrc->mc.min;
 	uinfo->value.integer.max = mrc->mc.max;
 
@@ -833,36 +833,44 @@ int snd_soc_get_xr_sx(struct snd_kcontrol *kcontrol,
 {
 	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
 	struct soc_mreg_control *mrc =
-		(struct soc_mreg_control *)kcontrol->private_value;
-	unsigned int regbase = mrc->mc.reg;
+			(struct soc_mreg_control *)kcontrol->private_value;
+	unsigned int valcount = snd_soc_volsw_is_stereo(&mrc->mc) ? 2 : 1;
 	unsigned int regcount = mrc->regcount;
-	unsigned int regwshift = mrc->mc.shift;
-	unsigned int regwmask = (1<<regwshift)-1;
+	unsigned int regbase[] = {mrc->mc.reg, mrc->mc.rreg};
+	unsigned int regwshift[] = {mrc->mc.shift, mrc->mc.rshift};
+	unsigned int regwmask[] = {(1 << regwshift[0]) - 1,
+			(1 << regwshift[1]) - 1};
 	unsigned int invert = mrc->mc.invert;
 	unsigned int lsb_first = mrc->lsb_first;
-	unsigned long mask = (1UL<<mrc->nbits)-1;
+	unsigned long mask = (1UL << mrc->nbits) - 1;
 	long min = mrc->mc.min;
 	long max = mrc->mc.max;
 	long val = 0;
 	unsigned int regval;
-	unsigned int i;
+	unsigned int k, i;
 	int ret;
 
-	for (i = 0; i < regcount; i++) {
-		ret = snd_soc_component_read(component, regbase+i, &regval);
-		if (ret)
-			return ret;
-		if (lsb_first)
-			val |= (regval & regwmask) << (regwshift*i);
-		else
-			val |= (regval & regwmask) << (regwshift*(regcount-i-1));
+	for (k = 0; k < valcount; k++) {
+		for (i = 0; i < regcount; i++) {
+			ret = snd_soc_component_read(component, regbase[k] + i,
+					&regval);
+			if (ret)
+				return ret;
+			if (lsb_first)
+				val |= (regval & regwmask[k]) <<
+						(regwshift[k] * i);
+			else
+				val |= (regval & regwmask[k]) <<
+						(regwshift[k] * 
+						(regcount - i - 1));
+		}
+		val &= mask;
+		if (min < 0 && val > max)
+			val |= ~mask;
+		if (invert)
+			val = max - val;
+		ucontrol->value.integer.value[k] = val;
 	}
-	val &= mask;
-	if (min < 0 && val > max)
-		val |= ~mask;
-	if (invert)
-		val = max - val;
-	ucontrol->value.integer.value[0] = val;
 
 	return 0;
 }
@@ -886,34 +894,46 @@ int snd_soc_put_xr_sx(struct snd_kcontrol *kcontrol,
 {
 	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
 	struct soc_mreg_control *mrc =
-		(struct soc_mreg_control *)kcontrol->private_value;
-	unsigned int regbase = mrc->mc.reg;
+			(struct soc_mreg_control *)kcontrol->private_value;
+	unsigned int valcount = snd_soc_volsw_is_stereo(&mrc->mc) ? 2 : 1;
 	unsigned int regcount = mrc->regcount;
-	unsigned int regwshift = mrc->mc.shift;
-	unsigned int regwmask = (1<<regwshift)-1;
+	unsigned int regbase[] = {mrc->mc.reg, mrc->mc.rreg};
+	unsigned int regwshift[] = {mrc->mc.shift, mrc->mc.rshift};
+	unsigned int regwmask[] = {(1 << regwshift[0]) - 1,
+			(1 << regwshift[1]) - 1};
 	unsigned int invert = mrc->mc.invert;
 	unsigned int lsb_first = mrc->lsb_first;
-	unsigned long mask = (1UL<<mrc->nbits)-1;
+	unsigned long mask = (1UL << mrc->nbits) - 1;
 	long max = mrc->mc.max;
-	long val = ucontrol->value.integer.value[0];
-	unsigned int i, regval, regmask;
+	long val[] = {ucontrol->value.integer.value[0],
+			ucontrol->value.integer.value[1]};
+	unsigned int regval, regmask;
+	unsigned int k, i;
 	int err;
 
-	if (invert)
-		val = max - val;
-	val &= mask;
-	for (i = 0; i < regcount; i++) {
-		if (lsb_first) {
-			regval = (val >> (regwshift*i)) & regwmask;
-			regmask = (mask >> (regwshift*i)) & regwmask;
-		} else {
-			regval = (val >> (regwshift*(regcount-i-1))) & regwmask;
-			regmask = (mask >> (regwshift*(regcount-i-1))) & regwmask;
+	for (k = 0; k < valcount; k++) {
+		if (invert)
+			val[k] = max - val[k];
+		val[k] &= mask;
+		for (i = 0; i < regcount; i++) {
+			if (lsb_first) {
+				regval = (val[k] >> (regwshift[k] * i)) &
+						regwmask[k];
+				regmask = (mask >> (regwshift[k] * i)) &
+						regwmask[k];
+			} else {
+				regval = (val[k] >> (regwshift[k] *
+						(regcount - i - 1))) &
+						regwmask[k];
+				regmask = (mask >> (regwshift[k] *
+						(regcount-i-1))) &
+						regwmask[k];
+			}
+			err = snd_soc_component_update_bits(component,
+					regbase[k] + i, regmask, regval);
+			if (err < 0)
+				return err;
 		}
-		err = snd_soc_component_update_bits(component, regbase+i,
-				regmask, regval);
-		if (err < 0)
-			return err;
 	}
 
 	return 0;
