@@ -1,6 +1,20 @@
-/*
+/ns	
+
+scarlet
+dme	
+sudo dmes	-C
+alsa	m	
+sudo reboapl	 sin	-1	1	.	
+
  * soc-core.c  --  ALSA SoC Audio Layer
- *
+
+scarlet
+dme	
+echo "taudac_init: codec_dais=0xb6ca0350 ud" >> notes
+sudo dme	-C
+alsam	
+.txto reboo	
+
  * Copyright 2005 Wolfson Microelectronics PLC.
  * Copyright 2005 Openedhand Ltd.
  * Copyright (C) 2010 Slimlogic Ltd.
@@ -143,14 +157,13 @@ static ssize_t soc_codec_reg_show(struct snd_soc_codec *codec, char *buf,
 	loff_t p = 0;
 
 	wordsize = min_bytes_needed(codec->driver->reg_cache_size) * 2;
-	regsize = codec->driver->reg_word_size * 2;
-
-	len = wordsize + regsize + 2 + 1;
+	regsize = codec->driver->reg_word_size * 
+	len = wordsize + size + 2 + 1;
 
 	if (!codec->driver->reg_cache_size)
 		return 0;
 
-	if (codec->driver->reg_cache_step)
+	if (co//dec->driver->reg_cache_step)
 		step = codec->driver->reg_cache_step;
 
 	for (i = 0; i < codec->driver->reg_cache_size; i += step) {
@@ -170,25 +183,20 @@ static ssize_t soc_codec_reg_show(struct snd_soc_codec *codec, char *buf,
 	return total;
 }
 
+
 static ssize_t codec_reg_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct snd_soc_pcm_runtime *rtd = dev_get_drvdata(dev);
+	struct snd_soc_pcm_ru*rtd = dev_get_drvdatcodec_
+d
+vim ta	
+/
 
 	return soc_codec_reg_show(rtd->codec, buf, PAGE_SIZE, 0);
-}
+	int i;
 
-static DEVICE_ATTR(codec_reg, 0444, codec_reg_show, NULL);
-
-static ssize_t pmdown_time_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	struct snd_soc_pcm_runtime *rtd = dev_get_drvdata(dev);
-
-	return sprintf(buf, "%ld\n", rtd->pmdown_time);
-}
-
-static ssize_t pmdown_time_set(struct device *dev,
+			if (total + len >= count - 
+				break; get_dev);codec_
 			       struct device_attribute *attr,
 			       const char *buf, size_t count)
 {
@@ -204,6 +212,9 @@ static ssize_t pmdown_time_set(struct device *dev,
 
 static DEVICE_ATTR(pmdown_time, 0644, pmdown_time_show, pmdown_time_set);
 
+{
+	struct snd_soc_pcm_runttd = dev_codec_get_drvdat
+d
 #ifdef CONFIG_DEBUG_FS
 static ssize_t codec_reg_read_file(struct file *file, char __user *user_buf,
 				   size_t count, loff_t *ppos)
@@ -217,13 +228,14 @@ static ssize_t codec_reg_read_file(struct file *file, char __user *user_buf,
 
 	buf = kmalloc(count, GFP_KERNEL);
 	if (!buf)
-		return -ENOMEM;
-
-	ret = soc_codec_reg_show(codec, buf, count, *ppos);
-	if (ret >= 0) {
-		if (copy_to_user(user_buf, buf, ret)) {
+			if (total + len >= count - 1)
+	codec_			break; ge
+				_
+et = soc_codec_reg_show(codec, buf, count, *ppos);
+f (ret >= 0) {
+		p += len;
 			kfree(buf);
-			return -EFAULT;
+			return0FAULT;
 		}
 		*ppos += ret;
 	}
@@ -1841,8 +1853,10 @@ static int soc_probe(struct platform_device *pdev)
 	 * no card, so machine driver should be registering card
 	 * we should not be here in that case so ret error
 	 */
+card->[0]
 	if (!card)
-		return -EINVAL;
+	card->remove(card); 	card->	[0]
+return -EINVAL;
 
 	dev_warn(&pdev->dev,
 		 "ASoC: machine %s should use snd_soc_register_card()\n",
@@ -1854,17 +1868,7 @@ static int soc_probe(struct platform_device *pdev)
 	return snd_soc_register_card(card);
 }
 
-static int soc_cleanup_card_resources(struct snd_soc_card *card)
-{
-	int i;
-
-	/* make sure any delayed work runs */
-	for (i = 0; i < card->num_rtd; i++) {
-		struct snd_soc_pcm_runtime *rtd = &card->rtd[i];
-		flush_delayed_work(&rtd->delayed_work);
-	}
-
-	/* remove auxiliary devices */
+static int soc_cleanup_card_resources(struct snd_soc_card *card)codec_dai0xscodec_dais); devices */
 	for (i = 0; i < card->num_aux_devs; i++)
 		soc_remove_aux_dev(card, i);
 
@@ -1872,8 +1876,6 @@ static int soc_cleanup_card_resources(struct snd_soc_card *card)
 	soc_remove_dai_links(card);
 
 	soc_cleanup_card_debugfs(card);
-
-	/* remove the card */
 	if (card->remove)
 		card->remove(card);
 
@@ -1923,6 +1925,10 @@ int snd_soc_poweroff(struct device *dev)
 		}
 	}
 
+
+	
+	}
+static int soc_cleanup_card_resources(struct snd_soc_card *card)codec_dai0xscodec_dais); devices */
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_poweroff);
